@@ -35,6 +35,7 @@ declare module 'claude-code' {
       expanded: Record<string, string>
       creating: Creating | null
       customCount: number
+      brandRev: number
     }
   }
 }

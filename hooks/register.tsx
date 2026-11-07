@@ -5,6 +5,8 @@ import type { Creating, Exam, Pass, Progress, Settings, Sync, View } from '../ty
 import { GEN_SYSTEM, buildCustomRoutes, cleanCustomList } from './custom'
 import { FOX as FOX_IMG, FOX_BOX, PLANT, PLANT_BOX } from './fox-art'
 import { INTER_FACES } from './inter-font'
+import { PRESETS, PROJECT_FILE, loadBrand, loadProject, paletteCss } from './brand'
+import type { Brand, BrandOptions } from './brand'
 import { CUSTOM, DEFAULT_ROUTE, LEVEL_NAMES, TOPICS, allRoutes, prerequisite, routeById, searchRoutes, trackName } from './routes'
 import type { Route } from './routes'
 
@@ -35,14 +37,55 @@ const creating = atom({ plugin: 'microdosis', key: 'creating' } as const, null a
 const customCount = atom({ plugin: 'microdosis', key: 'customCount' } as const, 0)
 const exam = atom({ plugin: 'microdosis', key: 'exam' } as const, null as Exam | null) as unknown as Atom<Exam | null>
 
-// Paleta: azul noche de fondo con acento durazno, en eco del naranja del zorrito.
-const NIGHT = '#0f2a3d'
-const NIGHT_2 = '#16405a'
-const FOX = '#F4997A'
-const MINT = '#FFD4C2'
-const TINT = 'rgba(244, 153, 122, 0.12)'
-// Tipografía de la cabecera: Inter, incrustada en el SVG (ver inter-font.ts).
-const DISPLAY_FONT = "'Inter Microdosis','Inter',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif"
+// Marca: logo, nombre y sistema de diseño, inyectables desde la configuración del mod (ver brand.ts).
+// Hasta que se lee la configuración, el sistema de Claude.
+let brand: Brand = { ...PRESETS.claude!, messages: {}, routes: [], warnings: [] }
+// Cambia cuando se carga la marca, para redibujar el panel.
+const brandRev = atom({ plugin: 'microdosis', key: 'brandRev' } as const, 0)
+// Tarjetas destacadas del panel: borde de acento y, si el sistema lo trae, fondo teñido.
+const highlight = () => ({ borderColor: brand.theme.panelAccent, ...(brand.theme.panelTint ? { backgroundColor: brand.theme.panelTint } : {}) })
+// Mensajes: los del proyecto si los trae; si no, los de la mascota; sin mascota, neutros.
+const cheer = {
+  finished: () => brand.messages.finished ?? (brand.mascot ? `¡Ruta terminada! ${brand.mascot} está feliz.` : '¡Ruta terminada!'),
+  right: () => brand.messages.correct ?? (brand.mascot ? `¡Bien! ${brand.mascot} está orgulloso.` : '¡Bien!'),
+  wrong: (answer: string) => (brand.messages.wrong ?? 'Casi. Era «{respuesta}».').replace(/\{respuesta\}/g, answer),
+  creating: () =>
+    brand.messages.creating ??
+    `${brand.mascot ? `${brand.mascot} está armando` : 'Se están armando'} tres niveles con paradas y examen. Tarda alrededor de un minuto; podés seguir usando Claude mientras tanto.`,
+}
+// Rutas por defecto del proyecto, ya validadas. La primera es la que se abre.
+let projectRoutes: string[] = []
+const startRoute = () => projectRoutes[0] ?? DEFAULT_ROUTE
+
+// «vue» se entiende como el primer nivel de la pista, «vue-1».
+function resolveRoute(ref: string): string | null {
+  const all = allRoutes()
+  const exact = all.find(r => r.id === ref)
+  if (exact) return exact.id
+  const track = all.filter(r => r.track === ref || (r.trackName ?? '').toLowerCase() === ref.toLowerCase()).sort((a, b) => (a.level ?? 0) - (b.level ?? 0))
+  return track[0]?.id ?? null
+}
+
+// Suma al panel las rutas del proyecto y, si la ruta activa no es una de ellas, abre la primera.
+// No se sube a la nube: es la vista de este proyecto, no un cambio de la persona.
+async function applyProjectRoutes($: EngineInterface) {
+  const ids: string[] = []
+  const unknown: string[] = []
+  for (const ref of brand.routes) {
+    const id = resolveRoute(ref)
+    if (!id) unknown.push(ref)
+    else if (!ids.includes(id)) ids.push(id)
+  }
+  if (unknown.length) $.ui.toast(`Microdosis: ${PROJECT_FILE} nombra rutas que no existen: ${unknown.join(', ')}`)
+  projectRoutes = ids
+  if (!ids.length) return
+  await update($, settings, s => ({
+    ...s,
+    shown: [...ids, ...s.shown.filter(x => !ids.includes(x))],
+    active: ids.includes(s.active) ? s.active : ids[0]!,
+  }))
+  await showStatus($)
+}
 
 const versions: Record<string, number> = {}
 let chain: Promise<unknown> = Promise.resolve()
@@ -243,7 +286,7 @@ async function next($: EngineInterface) {
     return { ...p, done, cur: pending ? missing[0]! : p.cur, at: Date.now() }
   })
   if (pending) $.ui.toast(pending === 1 ? 'Te queda 1 parada: te llevo a ella.' : `Te quedan ${pending} paradas: te llevo a la primera.`)
-  else if (finished) $.ui.toast('¡Ruta terminada! El zorrito está feliz.')
+  else if (finished) $.ui.toast(cheer.finished())
 }
 
 async function random($: EngineInterface) {
@@ -395,7 +438,7 @@ async function issueCert($: EngineInterface, rawName: string) {
     data: {
       code, name, routeId: r.id, route: r.name, track: r.track ?? '', level: r.level ?? 0,
       score: pass.score, total: pass.total, pct: Math.round((pass.score / pass.total) * 100),
-      attempts, issuedAt: new Date(at).toISOString(), issuer: 'Microdosis · Naummi', version: 1,
+      attempts, issuedAt: new Date(at).toISOString(), issuer: brand.name === 'Microdosis' ? 'Microdosis' : `Microdosis · ${brand.name}`, version: 1,
     },
   }).catch(() => null)
   if (!r2 || r2.isError || r2.deny) $.ui.toast('El certificado quedó en tus ajustes, pero no se pudo registrar en claude.ai. Probá de nuevo más tarde.')
@@ -404,10 +447,11 @@ async function issueCert($: EngineInterface, rawName: string) {
 // Nombre corto para las pestañas: «Vue 3 · N1» en vez de «Vue 3 · Fundamentos».
 const shortName = (r: Route) => (r.track && r.level ? `${trackName(r)} · N${r.level}` : r.name)
 
-// --- Cabecera: tarjeta azul noche con el zorrito, el avance y el recorrido por tramos.
+// --- Cabecera: tarjeta con el zorrito (o el logo inyectado), el avance y el recorrido por tramos.
+// Los colores salen de la marca como variables CSS, con su variante oscura si la tiene (ver brand.ts).
 
 function esc(s: string) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
 // El zorrito de Naummi abrazando su libro, con su plantita al lado, parados en el piso.
@@ -418,23 +462,25 @@ const box = (b: number[]) => {
   const [x, y] = at(b[0]!, b[1]!)
   return { x, y, w: (b[2]! - b[0]!) * SCENE.k, h: (b[3]! - b[1]!) * SCENE.k }
 }
+const f = (n: number) => n.toFixed(1)
+
+// Destellos alrededor de (cx, cy) cuando la respuesta es correcta.
+function sparks(cx: number, cy: number): string {
+  return [[-34, -18], [30, -26], [-40, 12], [38, 8], [0, -44]]
+    .map(([dx, dy], i) => `<circle cx="${f(cx + dx!)}" cy="${f(cy + dy!)}" r="2" style="fill:var(--${i % 2 ? 'accentSoft' : 'spark'})" opacity="0">
+  <animate attributeName="opacity" values="0;1;0" dur="1.2s" begin="${(0.1 + i * 0.12).toFixed(2)}s" repeatCount="3"/>
+  <animate attributeName="r" values="1;3;1" dur="1.2s" begin="${(0.1 + i * 0.12).toFixed(2)}s" repeatCount="3"/>
+</circle>`).join('')
+}
 
 function foxScene(cheer: boolean): string {
   const fox = box(FOX_BOX), plant = box(PLANT_BOX)
   const [fx, fy] = at(700, 604) // entre las patas
   const [px, py] = at(890, 617) // base de la maceta
   const [hx, hy] = at(655, 200) // cabeza
-  const sparks = cheer
-    ? [[-34, -18], [30, -26], [-40, 12], [38, 8], [0, -44]]
-        .map(([dx, dy], i) => `<circle cx="${(hx + dx!).toFixed(1)}" cy="${(hy + dy!).toFixed(1)}" r="2" fill="${i % 2 ? MINT : '#f7d76b'}" opacity="0">
-  <animate attributeName="opacity" values="0;1;0" dur="1.2s" begin="${(0.1 + i * 0.12).toFixed(2)}s" repeatCount="3"/>
-  <animate attributeName="r" values="1;3;1" dur="1.2s" begin="${(0.1 + i * 0.12).toFixed(2)}s" repeatCount="3"/>
-</circle>`).join('')
-    : ''
-  const f = (n: number) => n.toFixed(1)
   return `<ellipse cx="${f(fx - 4)}" cy="${f(fy + 1)}" rx="76" ry="8" fill="url(#floor)"/>
-<ellipse cx="${f(fx)}" cy="${f(fy + 0.5)}" rx="26" ry="3.8" fill="#020a12" opacity="0.55"/>
-<ellipse cx="${f(px)}" cy="${f(py + 0.3)}" rx="12" ry="2.6" fill="#020a12" opacity="0.5"/>
+<ellipse cx="${f(fx)}" cy="${f(fy + 0.5)}" rx="26" ry="3.8" style="fill:var(--shadow)" opacity="0.55"/>
+<ellipse cx="${f(px)}" cy="${f(py + 0.3)}" rx="12" ry="2.6" style="fill:var(--shadow)" opacity="0.5"/>
 <g transform="translate(${f(fx)} ${f(fy)})"><g>
   <animateTransform attributeName="transform" type="scale" values="1 1;1.006 1.014;1 1" keyTimes="0;0.5;1" dur="3.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1"/>
   <image href="${FOX_IMG}" x="${f(fox.x - fx)}" y="${f(fox.y - fy)}" width="${f(fox.w)}" height="${f(fox.h)}"/>
@@ -443,17 +489,27 @@ function foxScene(cheer: boolean): string {
   <animateTransform attributeName="transform" type="rotate" values="-2.2 ${f(px)} ${f(py)};2.2 ${f(px)} ${f(py)};-2.2 ${f(px)} ${f(py)}" dur="4.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1"/>
   <image href="${PLANT}" x="${f(plant.x)}" y="${f(plant.y)}" width="${f(plant.w)}" height="${f(plant.h)}"/>
 </g>
-${sparks}`
+${cheer ? sparks(hx, hy) : ''}`
+}
+
+// Logo inyectado: centrado en la caja de la derecha, sin deformarse, flotando apenas.
+function logoScene(logo: string, cheer: boolean, W: number): string {
+  const bw = 112, bh = 84, cx = W - 78, cy = 58
+  return `<g><animateTransform attributeName="transform" type="translate" values="0 0;0 -2;0 0" dur="4s" repeatCount="indefinite" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1"/>
+  <image href="${esc(logo)}" x="${f(cx - bw / 2)}" y="${f(cy - bh / 2)}" width="${bw}" height="${bh}" preserveAspectRatio="xMidYMid meet"/>
+</g>
+${cheer ? sparks(cx, cy - 10) : ''}`
 }
 
 function heroSvg(route: Route, p: Progress, cheer = false): string {
   const W = 560, H = 140
+  const t = brand.theme
   const total = route.steps.length
   const n = countDone(p)
   const pct = Math.round((n / total) * 100)
   const leg = route.steps[p.cur][0]
-  const sans = `font-family="${DISPLAY_FONT}"`
-  const mono = 'font-family="ui-monospace,SFMono-Regular,Menlo,monospace"'
+  const sans = `font-family="${esc(t.displayFont)}"`
+  const mono = `font-family="${esc(t.monoFont)}"`
 
   // La barra se llena de izquierda a derecha con las paradas hechas; un punto marca dónde estás.
   const x0 = 20, y = 127, groupGap = 7
@@ -465,35 +521,43 @@ function heroSvg(route: Route, p: Progress, cheer = false): string {
     const x = x0 + i * tickW + s[0] * groupGap
     const pad = Math.min(0.8, tickW * 0.12)
     if (i === p.cur) curX = x + tickW / 2
-    ticks.push(`<rect x="${(x + pad).toFixed(1)}" y="${y - 3.5}" width="${(tickW - 2 * pad).toFixed(1)}" height="7" rx="1.5" fill="${i < n ? FOX : 'rgba(255,255,255,0.16)'}"/>`)
+    ticks.push(`<rect x="${f(x + pad)}" y="${y - 3.5}" width="${f(tickW - 2 * pad)}" height="7" rx="1.5" style="fill:var(--${i < n ? 'accent' : 'track'})"/>`)
   })
-  ticks.push(`<circle cx="${curX.toFixed(1)}" cy="${y - 8.5}" r="2.2" fill="#ffffff"/>`)
+  ticks.push(`<circle cx="${f(curX)}" cy="${y - 8.5}" r="2.2" style="fill:var(--text)"/>`)
 
   const headline = n === total ? '¡Ruta completa!' : `Parada ${p.cur + 1}`
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
-<defs><style>${INTER_FACES}</style>
-  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${NIGHT}"/><stop offset="1" stop-color="${NIGHT_2}"/></linearGradient>
-  <radialGradient id="floor" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="${MINT}" stop-opacity="0.16"/><stop offset="1" stop-color="${MINT}" stop-opacity="0"/></radialGradient>
-  <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="${FOX}" stop-opacity="0.35"/><stop offset="1" stop-color="${FOX}" stop-opacity="0"/></radialGradient>
+<defs><style>${t.fontFaces}${paletteCss(t)}</style>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--bg)"/><stop offset="1" style="stop-color:var(--bg2)"/></linearGradient>
+  <radialGradient id="floor" cx="0.5" cy="0.5" r="0.5"><stop offset="0" style="stop-color:var(--accentSoft);stop-opacity:0.16"/><stop offset="1" style="stop-color:var(--accentSoft);stop-opacity:0"/></radialGradient>
+  <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" style="stop-color:var(--accent);stop-opacity:0.35"/><stop offset="1" style="stop-color:var(--accent);stop-opacity:0"/></radialGradient>
 </defs>
-<rect width="${W}" height="${H}" rx="16" fill="url(#bg)"/>
+<rect width="${W}" height="${H}" rx="${t.radius}" fill="url(#bg)"/>
 <circle cx="${W - 66}" cy="60" r="62" fill="url(#glow)"/>
-${foxScene(cheer)}
-<text x="20" y="26" ${mono} font-size="9.5" letter-spacing="1.6" fill="${MINT}">${esc(route.name.toUpperCase())}</text>
-<text x="20" y="56" ${sans} font-size="23" font-weight="700" letter-spacing="-0.5" fill="#ffffff">${esc(headline)}</text>
-<text x="20" y="76" ${sans} font-size="12.5" fill="rgba(255,255,255,0.72)">${n} de ${total} hechas · ${pct}%</text>
-<text x="20" y="${y - 15}" ${mono} font-size="8.5" letter-spacing="1" fill="${MINT}">${esc(route.legs[leg].toUpperCase())}</text>
+${brand.logo ? logoScene(brand.logo, cheer, W) : foxScene(cheer)}
+<text x="20" y="26" ${mono} font-size="9.5" letter-spacing="1.6" style="fill:var(--accentSoft)">${esc(route.name.toUpperCase())}</text>
+<text x="20" y="56" ${sans} font-size="23" font-weight="700" letter-spacing="-0.5" style="fill:var(--text)">${esc(headline)}</text>
+<text x="20" y="76" ${sans} font-size="12.5" style="fill:var(--textMuted)">${n} de ${total} hechas · ${pct}%</text>
+<text x="20" y="${y - 15}" ${mono} font-size="8.5" letter-spacing="1" style="fill:var(--accentSoft)">${esc(route.legs[leg].toUpperCase())}</text>
 ${ticks.join('')}
 </svg>`
 }
 
-export const register: Register = on => {
+export const register: Register = (on, options) => {
   on('session.start', async ($, e, nxt) => {
+    // Marca y rutas del proyecto (.claude/microlearnings.json), encima de los ajustes del mod.
+    const branded = loadProject($).then(async project => {
+      const b = await loadBrand($, options as BrandOptions, project.config)
+      brand = { ...b, theme: b.id === 'naummi' ? { ...b.theme, fontFaces: INTER_FACES } : b.theme }
+      for (const w of [...(project.error ? [project.error] : []), ...b.warnings]) $.ui.toast(`Microdosis: ${w}`)
+      await update($, brandRev, n => n + 1)
+    })
     await $.command.register({ name: 'microdosis', description: 'Abrir el panel de Microdosis' })
     await $.command.register({ name: 'ok', description: 'Marcar hecho el paso de Microdosis y pasar al siguiente' })
     await $.command.register({ name: 'nueva-ruta', description: 'Crear una ruta de Microdosis sobre un tema, en tres niveles con examen', argumentHint: 'tema' })
     void $.ui.open({ id: PANE, title: 'Microdosis' })
-    void load($)
+    // Las rutas del proyecto se aplican después de leer el progreso guardado, para no pisarlo.
+    void Promise.all([branded, load($)]).then(() => applyProjectRoutes($))
     return nxt(e)
   })
 
@@ -542,6 +606,7 @@ export const register: Register = on => {
     const Input = 'Input' in els ? els.Input : null
     const Code = 'Code' in els ? els.Code : null
     const Link = 'Link' in els ? els.Link : null
+    await read($, brandRev) // redibuja cuando se carga la marca
     const s = await read($, settings)
     const all = await read($, byRoute)
     const sy = await read($, sync)
@@ -564,12 +629,12 @@ export const register: Register = on => {
       const welcome = (then: () => Promise<unknown>) => () => void setSettings($, st => ({ ...st, welcomed: true })).then(then)
       return (
         <Box flexDirection="column" gap={2} paddingX={1} paddingY={1}>
-          {Svg && <Svg source={heroSvg(routeById(DEFAULT_ROUTE), EMPTY)} alt="El zorrito de Microdosis con su libro y su plantita" />}
-          <Text size="title" weight="bold">Hola, soy Microdosis</Text>
-          <Text>Aprendés de a poquito, sin salir de Claude: cada parada se lee en un minuto o tres y termina con una pregunta rápida. Hay rutas de cultura general, tecnología, comunicación, idiomas y más.</Text>
+          {Svg && <Svg source={heroSvg(routeById(startRoute()), EMPTY)} alt={brand.logo ? `Logo de ${brand.name}` : "El zorrito de Microdosis con su libro y su plantita"} />}
+          <Text size="title" weight="bold">{brand.messages.welcomeTitle ?? 'Hola, soy Microdosis'}</Text>
+          <Text>{brand.messages.welcomeText ?? 'Aprendés de a poquito, sin salir de Claude: cada parada se lee en un minuto o tres y termina con una pregunta rápida. Hay rutas de cultura general, tecnología, comunicación, idiomas y más.'}</Text>
           <Text>Las rutas por niveles terminan con un examen. Si lo aprobás, te llevás un certificado que podés compartir en LinkedIn.</Text>
           <Box flexDirection="row" gap={1} flexWrap="wrap">
-            <Button key="w-start" label="Empezar con Variado" variant="primary" onPress={welcome(() => openRoute($, DEFAULT_ROUTE))} />
+            <Button key="w-start" label={`Empezar con ${shortName(routeById(startRoute()))}`} variant="primary" onPress={welcome(() => openRoute($, startRoute()))} />
             <Button key="w-routes" label="⌕ Elegir una ruta" variant="secondary" onPress={welcome(() => update($, view, () => 'rutas' as View))} />
           </Box>
           <Text size="footnote" color="subtle">¿No está el tema que buscás? En Rutas podés crear el tuyo, o escribí /nueva-ruta y el tema.</Text>
@@ -621,7 +686,7 @@ export const register: Register = on => {
             </Box>
           )}
           {passed && !code && (
-            <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} backgroundColor={TINT} borderStyle="round" borderColor={FOX}>
+            <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} {...highlight()} borderStyle="round">
               <Text size="caption" mono color="claude">CERTIFICADO</Text>
               <Text>Escribí tu nombre como querés que figure. Se registra con fecha, puntaje y un código de verificación.</Text>
               {Input ? (
@@ -632,7 +697,7 @@ export const register: Register = on => {
             </Box>
           )}
           {passed && code && (
-            <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} backgroundColor={TINT} borderStyle="round" borderColor={FOX}>
+            <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} {...highlight()} borderStyle="round">
               <Text size="caption" mono color="claude">CERTIFICADO EMITIDO</Text>
               <Text weight="semibold">{code}</Text>
               {certLink(code, 'Ver y compartir el certificado')}
@@ -681,6 +746,7 @@ export const register: Register = on => {
         const { d, isActive, open, pass } = info(r)
         if (!open) return { text: 'BLOQUEADA', color: 'subtle' }
         if (pass) return { text: 'APROBADA', color: 'success' }
+        if (d >= r.steps.length) return { text: r.exam ? 'FALTA EXAMEN' : 'TERMINADA', color: 'success' }
         if (isActive) return { text: 'EN CURSO', color: 'claude' }
         return { text: d ? `${d}/${r.steps.length}` : 'NUEVA', color: 'subtle' }
       }
@@ -691,7 +757,7 @@ export const register: Register = on => {
         const anyShown = levels.some(r => s.shown.includes(r.id))
         const st = statusOf(sel)
         return (
-          <Box key={`track-${t}`} flexDirection="column" gap={1} paddingX={2} paddingY={1} borderStyle="round" borderColor={anyShown ? FOX : 'subtle'}>
+          <Box key={`track-${t}`} flexDirection="column" gap={1} paddingX={2} paddingY={1} borderStyle="round" borderColor={anyShown ? brand.theme.panelAccent : 'subtle'}>
             <Box flexDirection="row" justifyContent="space-between" alignItems="center">
               <Text size="heading" weight="semibold">{trackName(levels[0]!)}</Text>
               <Text size="caption" mono color="subtle">{levels.filter(r => info(r).pass).length}/{levels.length} NIVELES</Text>
@@ -724,7 +790,7 @@ export const register: Register = on => {
         const st = statusOf(r)
         const shown = s.shown.includes(r.id)
         return (
-          <Box key={`loose-${r.id}`} flexDirection="column" gap={1} paddingX={2} paddingY={1} borderStyle="round" borderColor={shown ? FOX : 'subtle'}>
+          <Box key={`loose-${r.id}`} flexDirection="column" gap={1} paddingX={2} paddingY={1} borderStyle="round" borderColor={shown ? brand.theme.panelAccent : 'subtle'}>
             <Box flexDirection="row" justifyContent="space-between" alignItems="center">
               <Text size="heading" weight="semibold">{r.name}</Text>
               <Text size="caption" mono color={st.color}>{st.text}</Text>
@@ -757,10 +823,10 @@ export const register: Register = on => {
             <Input key="search" placeholder="Buscar: vue, git, oratoria, avanzado…" value={q} submitLabel="Limpiar" onInput={val => void update($, query, () => val)} onSubmit={() => void update($, query, () => '')} />
           )}
           {creatingNow?.status === 'generando' ? (
-            <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} backgroundColor={TINT} borderStyle="round" borderColor={FOX}>
+            <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} {...highlight()} borderStyle="round">
               <Text size="caption" mono color="claude">CREANDO RUTA</Text>
               <Text weight="semibold">«{creatingNow.topic}»</Text>
-              <Text size="footnote" color="subtle">El zorrito está armando tres niveles con paradas y examen. Tarda alrededor de un minuto; podés seguir usando Claude mientras tanto.</Text>
+              <Text size="footnote" color="subtle">{cheer.creating()}</Text>
             </Box>
           ) : (
             <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} borderStyle="round" borderColor="subtle">
@@ -829,7 +895,7 @@ export const register: Register = on => {
         )}
 
         {n >= total && !pass && (
-          <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} backgroundColor={TINT} borderStyle="round" borderColor={FOX}>
+          <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} {...highlight()} borderStyle="round">
             <Text weight="semibold">{route.exam ? '¡Terminaste las paradas! Ahora el examen del nivel.' : '¡Terminaste esta ruta!'}</Text>
             <Text size="footnote" color="subtle">
               {route.exam ? `8 preguntas nuevas · aprobás con ${Math.ceil(route.exam.length * PASS_RATIO)} · al aprobar, certificado y siguiente nivel.` : 'Podés repasar cuando quieras o elegir otra ruta.'}
@@ -869,14 +935,14 @@ export const register: Register = on => {
                 </Text>
               ))}
               <Text size="footnote" color={picked === right ? 'success' : 'subtle'}>
-                {picked === right ? '¡Bien! El zorrito está orgulloso.' : `Casi. Era «${opts[right]}».`}
+                {picked === right ? cheer.right() : cheer.wrong(opts[right]!)}
               </Text>
             </Box>
           )}
         </Box>
 
         {picked != null && (
-          <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} backgroundColor={TINT} borderStyle="round" borderColor={FOX}>
+          <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} {...highlight()} borderStyle="round">
             <Text size="caption" mono color="claude">PARA LLEVARTE</Text>
             <Text weight="medium">{take}</Text>
           </Box>

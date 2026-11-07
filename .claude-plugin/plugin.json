@@ -1,1 +1,34 @@
-{ "name": "microdosis", "version": "0.7.1", "description": "Un roadmap de microlearnings en un panel al lado del chat, con progreso sincronizado con claude.ai", "types": "./types/index.d.ts", "license": "MIT", "icon": "./.claude-plugin/icon.png" }
+{
+  "name": "microdosis",
+  "version": "0.8.0",
+  "description": "Un roadmap de microlearnings en un panel al lado del chat, con progreso sincronizado con claude.ai",
+  "types": "./types/index.d.ts",
+  "license": "MIT",
+  "icon": "./.claude-plugin/icon.png",
+  "userConfig": {
+    "designSystem": {
+      "type": "string",
+      "title": "Sistema de diseño",
+      "description": "claude (el de Claude, por defecto), naummi, o la ruta a un archivo de tokens .json o .css",
+      "default": "claude"
+    },
+    "logo": {
+      "type": "string",
+      "title": "Logo",
+      "description": "Ruta a un logo .svg, .png, .jpg, .webp o .gif (o un data URI). Vacío: el zorrito",
+      "default": ""
+    },
+    "brandName": {
+      "type": "string",
+      "title": "Nombre de la marca",
+      "description": "Aparece en el certificado como emisor. Vacío: el del sistema de diseño",
+      "default": ""
+    },
+    "mascot": {
+      "type": "string",
+      "title": "Mascota",
+      "description": "Nombre para los mensajes de festejo (por ejemplo «La lechuza»). Vacío con logo propio: mensajes neutros",
+      "default": ""
+    }
+  }
+}
