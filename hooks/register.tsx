@@ -21,8 +21,6 @@ const CUSTOM_DOC = 'microdosis-mis-rutas'
 const CERTS = 'certificados'
 const PASS_RATIO = 0.75
 const PANE = 'microdosis'
-// Prefijo de los links de las pestañas: nunca se abren, el panel atiende el clic.
-const TAB_HREF = 'https://microdosis.invalid/tab/'
 
 // La ruta variada usa el mismo documento que la página publicada.
 const docOf = (routeId: string) => (routeId === 'variado' ? 'microdosis' : `microdosis-${routeId}`)
@@ -644,7 +642,6 @@ export const register: Register = (on, options) => {
     const Input = 'Input' in els ? els.Input : null
     const Code = 'Code' in els ? els.Code : null
     const Link = 'Link' in els ? els.Link : null
-    const Markdown = 'Markdown' in els ? els.Markdown : null
     await read($, brandRev) // redibuja cuando se carga la marca
     const s = await read($, settings)
     const all = await read($, byRoute)
@@ -661,32 +658,6 @@ export const register: Register = (on, options) => {
     )
     const certLink = (code: string, label: string) =>
       Link ? <Link key={`cert-${code}`} href={certUrl(code)} label={label} /> : <Text color="claude">{label}: {certUrl(code)}</Text>
-    // Pestañas como texto, no como botones: la activa en negrita y las demás como links que cambian de pestaña.
-    // Los links tienen que ser https para que la superficie los deje tocar; este host no se abre nunca.
-    // Sin Markdown en la superficie, botones como antes.
-    const tabBar = (key: string, items: { id: string; label: string }[], active: string, pick: (id: string) => void) => {
-      if (!Markdown) {
-        return (
-          <Box flexDirection="row" gap={1} flexWrap="wrap">
-            {items.map(it => <Button key={`${key}-${it.id}`} label={it.label} variant={it.id === active ? 'primary' : 'secondary'} onPress={() => pick(it.id)} />)}
-          </Box>
-        )
-      }
-      const href = (id: string) => `${TAB_HREF}${key}/${encodeURIComponent(id)}`
-      const mdEsc = (t: string) => t.replace(/([\\`*_[\]<>#|])/g, '\\$1')
-      const text = items.map(it => (it.id === active ? `**${mdEsc(it.label)}**` : `[${mdEsc(it.label)}](${href(it.id)})`)).join('  ·  ')
-      return (
-        <Markdown
-          key={`tabs-${key}`}
-          text={text}
-          pressableLinks={items.filter(it => it.id !== active).map(it => href(it.id))}
-          onLinkPress={link => {
-            const it = items.find(x => href(x.id) === link.href)
-            if (it) pick(it.id)
-          }}
-        />
-      )
-    }
     // Explorar: una sola vista con dos pestañas, Rutas y Caminos.
     const exploreHeader = (tab: 'rutas' | 'caminos') => (
       <Box flexDirection="column" gap={1}>
@@ -694,7 +665,10 @@ export const register: Register = (on, options) => {
           <Text size="title" weight="bold">Explorar</Text>
           <Button key="back" label="← Volver" variant="secondary" onPress={() => void update($, view, () => 'paso' as View)} />
         </Box>
-        {tabBar('explorar', [{ id: 'rutas', label: 'Rutas' }, { id: 'caminos', label: '◇ Caminos' }], tab, id => void update($, view, () => id as View))}
+        <Box flexDirection="row" gap={1}>
+          <Button key="tab-rutas" label="Rutas" hotkey="r" variant={tab === 'rutas' ? 'primary' : 'secondary'} onPress={() => void update($, view, () => 'rutas' as View)} />
+          <Button key="tab-caminos" label="◇ Caminos" hotkey="c" variant={tab === 'caminos' ? 'primary' : 'secondary'} onPress={() => void update($, view, () => 'caminos' as View)} />
+        </Box>
       </Box>
     )
 
@@ -1045,19 +1019,13 @@ export const register: Register = (on, options) => {
     return (
       <Box flexDirection="column" gap={2} paddingX={1} paddingY={1}>
         <Box flexDirection="row" gap={1} alignItems="center" justifyContent="space-between">
-          {Markdown ? (
-            <Box flexDirection="row" flexShrink={1}>
-              {tabBar('rutas', s.shown.map(id => ({ id, label: shortName(routeById(id)) })), route.id, id => void openRoute($, id))}
-            </Box>
-          ) : (
-            <Box flexDirection="row" gap={1} alignItems="center">
-              {s.shown.length > VISIBLE && <Button key="tab-prev" label="‹" variant="secondary" onPress={() => void openRoute($, prevId)} />}
-              {tabs.map(id => (
-                <Button key={`tab-${id}`} label={shortName(routeById(id))} variant={id === route.id ? 'primary' : 'secondary'} onPress={() => void openRoute($, id)} />
-              ))}
-              {s.shown.length > VISIBLE && <Button key="tab-next" label="›" variant="secondary" onPress={() => void openRoute($, nextId)} />}
-            </Box>
-          )}
+          <Box flexDirection="row" gap={1} alignItems="center">
+            {s.shown.length > VISIBLE && <Button key="tab-prev" label="‹" variant="secondary" onPress={() => void openRoute($, prevId)} />}
+            {tabs.map(id => (
+              <Button key={`tab-${id}`} label={shortName(routeById(id))} variant={id === route.id ? 'primary' : 'secondary'} onPress={() => void openRoute($, id)} />
+            ))}
+            {s.shown.length > VISIBLE && <Button key="tab-next" label="›" variant="secondary" onPress={() => void openRoute($, nextId)} />}
+          </Box>
           <Button key="explore" label="Explorar" hotkey="e" variant="secondary" onPress={() => void update($, view, () => 'rutas' as View)} />
         </Box>
 
