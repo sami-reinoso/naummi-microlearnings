@@ -24,12 +24,12 @@ const settings = atom({ plugin: 'microdosis', key: 'prefs' } as const, START) as
 const sync = atom({ plugin: 'microdosis', key: 'sync' } as const, 'cargando' as Sync)
 const view = atom({ plugin: 'microdosis', key: 'view' } as const, 'paso' as View)
 
-// Paleta Naummi: azul profundo, turquesa y el verde del zorrito.
+// Paleta: azul noche de fondo con acento durazno, en eco del naranja del zorrito.
 const NIGHT = '#0f2a3d'
 const NIGHT_2 = '#16405a'
-const FOX = '#34D399'
-const MINT = '#a7f0d6'
-const TINT = 'rgba(52, 211, 153, 0.10)'
+const FOX = '#F4997A'
+const MINT = '#FFD4C2'
+const TINT = 'rgba(244, 153, 122, 0.12)'
 // Tipografía de la cabecera: Inter, incrustada en el SVG (ver inter-font.ts).
 const DISPLAY_FONT = "'Inter Microdosis','Inter',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif"
 
