@@ -28,14 +28,15 @@ Tocá **Rutas** en el panel para buscar y elegir qué microlearnings ver. El bus
 | Tecnología | C# y .NET | Fundamentos · Intermedio · Avanzado (ASP.NET Core) |
 | Tecnología | TypeScript | Fundamentos · Intermedio · Avanzado |
 | Tecnología | Git | Fundamentos · Intermedio · Avanzado |
+| Comunicación | Oratoria | Fundamentos · Intermedio · Avanzado |
+| Comunicación | Escribir claro | 8 paradas |
 | Producto y diseño | Producto | 8 paradas |
-| Escritura | Escribir claro | 8 paradas |
 | Cultura general | Variado | 48 paradas |
 | Astrología | Astrología: el mapa | 8 paradas |
 
 ## Exámenes y certificados
 
-Cada nivel de las rutas técnicas termina con un examen de 8 preguntas que no son las de las paradas. Se aprueba con el 75 %, y aprobar habilita el nivel siguiente. Al aprobar podés emitir un certificado con tu nombre, la ruta, el puntaje, la fecha, la cantidad de intentos y un código `MD-XXXXXXXX`.
+Cada nivel de las rutas por niveles (técnicas y Oratoria) termina con un examen de 8 preguntas que no son las de las paradas. Se aprueba con el 75 %, y aprobar habilita el nivel siguiente. Al aprobar podés emitir un certificado con tu nombre, la ruta, el puntaje, la fecha, la cantidad de intentos y un código `MD-XXXXXXXX`.
 
 ### Compartir en LinkedIn e Instagram
 

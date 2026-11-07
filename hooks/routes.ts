@@ -5,6 +5,7 @@ import { VUE } from './content/vue'
 import { CSHARP } from './content/csharp'
 import { TYPESCRIPT } from './content/typescript'
 import { GIT } from './content/git'
+import { ORATORIA } from './content/oratoria'
 
 // Pregunta de examen: [pregunta, opciones, índice correcto]. Nunca se repite en las paradas.
 export type ExamQ = [string, string[], number]
@@ -27,9 +28,9 @@ export type Route = {
 export const LEVEL_NAMES = ['', 'Fundamentos', 'Intermedio', 'Avanzado']
 
 // Orden en que se muestran los temas en la sección Rutas.
-export const TOPICS = ['Tecnología', 'Producto y diseño', 'Escritura', 'Cultura general', 'Astrología']
+export const TOPICS = ['Tecnología', 'Comunicación', 'Producto y diseño', 'Cultura general', 'Astrología']
 
-export const TRACK_NAMES: Record<string, string> = { vue: 'Vue 3', csharp: 'C# y .NET', ts: 'TypeScript', git: 'Git' }
+export const TRACK_NAMES: Record<string, string> = { vue: 'Vue 3', csharp: 'C# y .NET', ts: 'TypeScript', git: 'Git', oratoria: 'Oratoria' }
 
 // La primera ruta es la que se muestra por defecto.
 export const ROUTES: Route[] = [
@@ -38,8 +39,9 @@ export const ROUTES: Route[] = [
   ...CSHARP,
   ...TYPESCRIPT,
   ...GIT,
+  ...ORATORIA,
   { id: 'producto', name: 'Producto', topic: 'Producto y diseño', keywords: ['producto', 'ux', 'mvp', 'retención', 'métricas', 'priorizar', 'jobs to be done'], blurb: 'Entender un problema, validar barato y construir algo que la gente siga usando.', pace: '8 paradas · 3 min', legs: PRODUCTO_LEGS, steps: PRODUCTO },
-  { id: 'escribir', name: 'Escribir claro', topic: 'Escritura', keywords: ['escritura', 'redacción', 'mails', 'documentos', 'claridad', 'comunicación'], blurb: 'Hábitos simples para que mails, documentos y mensajes se entiendan a la primera.', pace: '8 paradas · 3 min', legs: ESCRIBIR_LEGS, steps: ESCRIBIR },
+  { id: 'escribir', name: 'Escribir claro', topic: 'Comunicación', keywords: ['escritura', 'redacción', 'mails', 'documentos', 'claridad', 'comunicación'], blurb: 'Hábitos simples para que mails, documentos y mensajes se entiendan a la primera.', pace: '8 paradas · 3 min', legs: ESCRIBIR_LEGS, steps: ESCRIBIR },
   { id: 'astro', name: 'Astrología: el mapa', topic: 'Astrología', keywords: ['astrología', 'zodíaco', 'signos', 'casas', 'aspectos', 'elementos', 'historia'], blurb: 'De dónde viene, cómo se arma el zodíaco, elementos, casas, aspectos y qué dice la ciencia.', pace: '8 paradas · 3 min', legs: ASTRO_LEGS, steps: ASTRO },
 ]
 
