@@ -37,6 +37,16 @@ Tocá **Rutas** en el panel para buscar y elegir qué microlearnings ver. El bus
 
 Cada nivel de las rutas técnicas termina con un examen de 8 preguntas que no son las de las paradas. Se aprueba con el 75 %, y aprobar habilita el nivel siguiente. Al aprobar podés emitir un certificado con tu nombre, la ruta, el puntaje, la fecha, la cantidad de intentos y un código `MD-XXXXXXXX`.
 
+### Compartir en LinkedIn e Instagram
+
+Desde el certificado, tocá **Hacer público**: queda guardado en la página y cualquiera con el link lo puede verificar, sin cuenta de claude.ai. Después:
+
+- **Agregar a mi perfil de LinkedIn** lo carga en *Licencias y certificaciones*, con el ID y el link de verificación.
+- **Publicar en LinkedIn** abre una publicación con el link.
+- **Imagen para Instagram, historia o LinkedIn** descarga una tarjeta con el zorrito, lista para subir.
+
+Para que el link abra para cualquiera, la página tiene que estar compartida como «Cualquiera con el link».
+
 El certificado se verifica en la página de Microdosis en claude.ai (`#cert-CÓDIGO`), que lo busca en su registro. Solo la dueña de la página puede escribir en ese registro; quien tenga acceso a la página puede leerlo. La corrección del examen ocurre en tu compu, así que el certificado acredita que el examen se registró con esos datos, no que lo supervisó un tercero.
 
 ## Sincronización con claude.ai
