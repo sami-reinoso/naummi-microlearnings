@@ -27,7 +27,6 @@ const settings = atom({ plugin: 'microdosis', key: 'prefs' } as const, START) as
 const sync = atom({ plugin: 'microdosis', key: 'sync' } as const, 'cargando' as Sync)
 const view = atom({ plugin: 'microdosis', key: 'view' } as const, 'paso' as View)
 const query = atom({ plugin: 'microdosis', key: 'query' } as const, '')
-const tabStart = atom({ plugin: 'microdosis', key: 'tabStart' } as const, 0)
 const expanded = atom({ plugin: 'microdosis', key: 'expanded' } as const, {} as Record<string, string>)
 const exam = atom({ plugin: 'microdosis', key: 'exam' } as const, null as Exam | null) as unknown as Atom<Exam | null>
 
@@ -325,7 +324,7 @@ function esc(s: string) {
 
 // El zorrito de Naummi abrazando su libro, con su plantita al lado, parados en el piso.
 // Coordenadas: píxeles de la ilustración original, escalados a la cabecera.
-const SCENE = { k: 0.2061, x: 242.5, y: 2, ox: FOX_BOX[0]!, oy: FOX_BOX[1]! }
+const SCENE = { k: 0.2061, x: 440.5, y: 2, ox: FOX_BOX[0]!, oy: FOX_BOX[1]! }
 const at = (px: number, py: number): [number, number] => [SCENE.x + (px - SCENE.ox) * SCENE.k, SCENE.y + (py - SCENE.oy) * SCENE.k]
 const box = (b: number[]) => {
   const [x, y] = at(b[0]!, b[1]!)
@@ -335,7 +334,7 @@ const box = (b: number[]) => {
 function foxScene(cheer: boolean): string {
   const fox = box(FOX_BOX), plant = box(PLANT_BOX)
   const [fx, fy] = at(700, 604) // entre las patas
-  const [px, py] = at(890, 621) // base de la maceta
+  const [px, py] = at(890, 617) // base de la maceta
   const [hx, hy] = at(655, 200) // cabeza
   const sparks = cheer
     ? [[-34, -18], [30, -26], [-40, 12], [38, 8], [0, -44]]
@@ -360,7 +359,7 @@ ${sparks}`
 }
 
 function heroSvg(route: Route, p: Progress, cheer = false): string {
-  const W = 360, H = 140
+  const W = 560, H = 140
   const total = route.steps.length
   const n = countDone(p)
   const pct = Math.round((n / total) * 100)
@@ -652,11 +651,13 @@ export const register: Register = on => {
     const n = countDone(p)
     const pass = passes[route.id]
 
-    // Pestañas en una sola línea: dos visibles y flechas para recorrer el resto.
+    // Pestañas en una sola línea: dos visibles, la activa siempre entre ellas; ‹ › pasan a la ruta anterior o siguiente.
     const VISIBLE = 2
-    const maxStart = Math.max(0, s.shown.length - VISIBLE)
-    const start = Math.min(await read($, tabStart), maxStart)
+    const idx = Math.max(0, s.shown.indexOf(route.id))
+    const start = Math.max(0, Math.min(idx === 0 ? 0 : idx - 1, s.shown.length - VISIBLE))
     const tabs = s.shown.slice(start, start + VISIBLE)
+    const prevId = s.shown[(idx - 1 + s.shown.length) % s.shown.length]!
+    const nextId = s.shown[(idx + 1) % s.shown.length]!
 
     const paragraphs = body.split('\n\n').map((par, i) => {
       if (par.startsWith('```')) {
@@ -672,15 +673,14 @@ export const register: Register = on => {
       <Box flexDirection="column" gap={2} paddingX={1} paddingY={1}>
         <Box flexDirection="row" gap={1} alignItems="center" justifyContent="space-between">
           <Box flexDirection="row" gap={1} alignItems="center">
-            {s.shown.length > VISIBLE && <Button key="tab-prev" label="‹" variant="secondary" onPress={() => void update($, tabStart, t => Math.max(0, Math.min(t, maxStart) - 1))} />}
+            {s.shown.length > VISIBLE && <Button key="tab-prev" label="‹" variant="secondary" onPress={() => void openRoute($, prevId)} />}
             {tabs.map(id => (
               <Button key={`tab-${id}`} label={shortName(routeById(id))} variant={id === route.id ? 'primary' : 'secondary'} onPress={() => void openRoute($, id)} />
             ))}
-            {s.shown.length > VISIBLE && <Button key="tab-next" label="›" variant="secondary" onPress={() => void update($, tabStart, t => Math.min(maxStart, t + 1))} />}
+            {s.shown.length > VISIBLE && <Button key="tab-next" label="›" variant="secondary" onPress={() => void openRoute($, nextId)} />}
           </Box>
           <Button key="routes" label="⌕ Rutas" variant="secondary" onPress={() => void update($, view, () => 'rutas' as View)} />
         </Box>
-        {s.shown.length > VISIBLE && <Text size="footnote" color="subtle">{start + 1}–{Math.min(start + VISIBLE, s.shown.length)} de {s.shown.length} rutas</Text>}
 
         {!Svg ? (
           <Box flexDirection="column">
