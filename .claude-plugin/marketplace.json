@@ -1,0 +1,5 @@
+{
+  "name": "naummi-microlearnings",
+  "owner": { "name": "Samanta Reinoso" },
+  "plugins": [{ "name": "microdosis", "source": "./", "description": "Roadmap de microlearnings en un panel al lado del chat" }]
+}
