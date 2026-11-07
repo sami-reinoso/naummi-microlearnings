@@ -2,7 +2,8 @@ import { atom, read, update } from 'claude-code'
 import type { Atom, EngineInterface, Register } from 'claude-code'
 
 import type { Progress, Settings, Sync, View } from '../types'
-import { FOX_ARM, FOX_BODY } from './fox-art'
+import { FOX_ARM, FOX_BODY, NOTEBOOK, NOTEBOOK_RATIO, PAW, PAW_BOX } from './fox-art'
+import { INTER_FACES } from './inter-font'
 import { DEFAULT_ROUTE, ROUTES, routeById } from './routes'
 import type { Route } from './routes'
 
@@ -29,6 +30,8 @@ const NIGHT_2 = '#16405a'
 const FOX = '#34D399'
 const MINT = '#a7f0d6'
 const TINT = 'rgba(52, 211, 153, 0.10)'
+// Tipografía de la cabecera: Inter, incrustada en el SVG (ver inter-font.ts).
+const DISPLAY_FONT = "'Inter Microdosis','Inter',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif"
 
 // Silueta del zorrito de Naummi, trazada sobre el logo (lienzo 1024).
 const FOX_PATH =
@@ -221,8 +224,19 @@ function esc(s: string) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-// El zorrito aterciopelado, con las animaciones de Naummi: flota (gp-float), saluda con la pata
+// El zorrito aterciopelado, parado en el piso con su sombra: saluda con la pata
 // (fox-paw-wave, con la misma pausa de 82° y los mismos tiempos) y festeja con un anillo (gp-ring).
+// El cuaderno de campo de Naummi en la mano que no saluda: va sobre el cuerpo
+// y la pata (recortada del mismo sprite) se dibuja encima, así lo sostiene.
+function bookSvg(size: number): string {
+  const w = size * BOOK.w, h = w * NOTEBOOK_RATIO
+  const cx = size * BOOK.x, cy = size * BOOK.y
+  const [px, py, pw, ph] = PAW_BOX.map(v => v * size)
+  return `<image href="${NOTEBOOK}" x="${(cx - w / 2).toFixed(1)}" y="${(cy - h / 2).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" transform="rotate(${BOOK.rot} ${cx.toFixed(1)} ${cy.toFixed(1)})"/>
+<image href="${PAW}" x="${px!.toFixed(1)}" y="${py!.toFixed(1)}" width="${pw!.toFixed(1)}" height="${ph!.toFixed(1)}"/>`
+}
+const BOOK = { x: 0.275, y: 0.745, w: 0.24, rot: -12 }
+
 function foxSvg(x: number, y: number, size: number, cheer: boolean): string {
   const ox = (0.08 + 0.66) * size, oy = 0.53 * size
   const rot = (deg: number) => `${deg} ${ox.toFixed(1)} ${oy.toFixed(1)}`
@@ -235,12 +249,12 @@ function foxSvg(x: number, y: number, size: number, cheer: boolean): string {
     : ''
   return `<g transform="translate(${x} ${y})">
 <g>
-  <animateTransform attributeName="transform" type="translate" values="0 0;0 -3;0 0" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1"/>
   ${ring}
   <image href="${FOX_ARM}" x="${0.08 * size}" y="0" width="${size}" height="${size}" transform="rotate(${rot(82)})">
     <animateTransform attributeName="transform" type="rotate" values="${wave}" keyTimes="0;0.15;0.27;0.42;0.54;0.66;0.78;0.88;1" dur="3.5s" begin="0.35s" fill="freeze"/>
   </image>
   <image href="${FOX_BODY}" x="0" y="0" width="${size}" height="${size}"/>
+  ${bookSvg(size)}
 </g>
 </g>`
 }
@@ -251,7 +265,7 @@ function heroSvg(route: Route, p: Progress, cheer = false): string {
   const n = countDone(p)
   const pct = Math.round((n / total) * 100)
   const leg = route.steps[p.cur][0]
-  const sans = "font-family=\"-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',sans-serif\""
+  const sans = `font-family="${DISPLAY_FONT}"`
   const mono = 'font-family="ui-monospace,SFMono-Regular,Menlo,monospace"'
 
   // Una marca por parada, agrupadas por tramo con aire entre grupos.
@@ -267,21 +281,23 @@ function heroSvg(route: Route, p: Progress, cheer = false): string {
     const pad = Math.min(0.8, tickW * 0.12)
     ticks.push(`<rect x="${(x + pad).toFixed(1)}" y="${y - h / 2}" width="${(tickW - 2 * pad).toFixed(1)}" height="${h}" rx="1.6" fill="${fill}"/>`)
   })
-  const legX = x0 + route.steps.findIndex(s => s[0] === leg) * tickW + leg * groupGap
 
   const headline = n === total ? '¡Ruta completa!' : `Parada ${p.cur + 1}`
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
-<defs>
+<defs><style>${INTER_FACES}</style>
   <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${NIGHT}"/><stop offset="1" stop-color="${NIGHT_2}"/></linearGradient>
+  <radialGradient id="floor" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="${MINT}" stop-opacity="0.16"/><stop offset="1" stop-color="${MINT}" stop-opacity="0"/></radialGradient>
   <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="${FOX}" stop-opacity="0.35"/><stop offset="1" stop-color="${FOX}" stop-opacity="0"/></radialGradient>
 </defs>
 <rect width="${W}" height="${H}" rx="18" fill="url(#bg)"/>
 <circle cx="${W - 82}" cy="78" r="78" fill="url(#glow)"/>
+<ellipse cx="${W - 86}" cy="156" rx="78" ry="9" fill="url(#floor)"/>
+<ellipse cx="${W - 86}" cy="155.5" rx="40" ry="5.5" fill="#020a12" opacity="0.55"/>
 ${foxSvg(W - 168, 4, 156, cheer)}
 <text x="20" y="34" ${mono} font-size="10" letter-spacing="1.6" fill="${MINT}">${esc(route.name.toUpperCase())}</text>
-<text x="20" y="70" ${sans} font-size="26" font-weight="700" fill="#ffffff">${esc(headline)}</text>
+<text x="20" y="70" ${sans} font-size="26" font-weight="700" letter-spacing="-0.5" fill="#ffffff">${esc(headline)}</text>
 <text x="20" y="94" ${sans} font-size="13" fill="rgba(255,255,255,0.72)">${n} de ${total} hechas · ${pct}%</text>
-<text x="${Math.min(legX, W - 150)}" y="${y - 14}" ${mono} font-size="9" letter-spacing="1" fill="${MINT}">${esc(route.legs[leg].toUpperCase())}</text>
+<text x="20" y="${y - 16}" ${mono} font-size="9" letter-spacing="1" fill="${MINT}">${esc(route.legs[leg].toUpperCase())}</text>
 ${ticks.join('')}
 </svg>`
 }

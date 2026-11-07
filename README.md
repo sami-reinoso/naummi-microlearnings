@@ -52,3 +52,8 @@ El mod intenta sincronizar el progreso con una página de claude.ai que tiene la
 ## Sumar tu propia ruta
 
 Las rutas se declaran en `hooks/routes.ts`. Los pasos de Variado están en `hooks/steps.ts` y los de las rutas largas en `hooks/rutas-largas.ts`. Cada paso es `[tramo, título, texto, para llevarte, pregunta, opciones, índice correcto]`, y en el texto una línea en blanco separa los párrafos. Si cambiás el orden de los pasos de una ruta, el progreso guardado apunta a otros pasos.
+
+## Créditos
+
+- Zorrito aterciopelado y cuaderno de campo: ilustraciones de Naummi.
+- Tipografía de la cabecera: [Inter](https://rsms.me/inter/) de Rasmus Andersson, con licencia SIL Open Font License 1.1, incrustada y reducida a los caracteres que usa la cabecera.
