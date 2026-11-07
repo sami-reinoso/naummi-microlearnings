@@ -1,1 +1,1 @@
-{ "name": "microdosis", "version": "0.6.1", "description": "Un roadmap de microlearnings en un panel al lado del chat, con progreso sincronizado con claude.ai", "types": "./types/index.d.ts", "license": "MIT", "icon": "./.claude-plugin/icon.png" }
+{ "name": "microdosis", "version": "0.7.0", "description": "Un roadmap de microlearnings en un panel al lado del chat, con progreso sincronizado con claude.ai", "types": "./types/index.d.ts", "license": "MIT", "icon": "./.claude-plugin/icon.png" }

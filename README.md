@@ -24,19 +24,28 @@ Tocá **Rutas** en el panel para buscar y elegir qué microlearnings ver. El bus
 
 | Tema | Ruta | Niveles |
 | --- | --- | --- |
-| Tecnología | Vue 3 | Fundamentos · Intermedio · Avanzado |
-| Tecnología | C# y .NET | Fundamentos · Intermedio · Avanzado (ASP.NET Core) |
-| Tecnología | TypeScript | Fundamentos · Intermedio · Avanzado |
-| Tecnología | Git | Fundamentos · Intermedio · Avanzado |
+| Tecnología | Vue 3 · C# y .NET · TypeScript · Git · Python | Fundamentos · Intermedio · Avanzado |
+| Datos | SQL | Fundamentos · Intermedio · Avanzado |
+| Idiomas | Inglés para el trabajo | Fundamentos · Intermedio · Avanzado |
 | Comunicación | Oratoria | Fundamentos · Intermedio · Avanzado |
 | Comunicación | Escribir claro | 8 paradas |
+| Producto y diseño | Diseño de interfaces | Fundamentos · Intermedio · Avanzado |
 | Producto y diseño | Producto | 8 paradas |
+| Finanzas personales | Finanzas personales | Fundamentos · Intermedio · Avanzado (educación general, no asesoramiento) |
 | Cultura general | Variado | 48 paradas |
 | Astrología | Astrología: el mapa | 8 paradas |
+
+### Crear tus propias rutas
+
+Escribí `/nueva-ruta` y el tema (por ejemplo `/nueva-ruta negociación salarial`), o usá **+ Crear una ruta** en la sección Rutas. Claude arma la ruta en tres niveles, con paradas, examen y certificado, en alrededor de un minuto. Aparece en **Mis rutas** con el aviso de que fue creada con IA, para que la revises. Se sincroniza con tu cuenta y se puede borrar.
 
 ## Exámenes y certificados
 
 Cada nivel de las rutas por niveles (técnicas y Oratoria) termina con un examen de 8 preguntas que no son las de las paradas. Se aprueba con el 75 %, y aprobar habilita el nivel siguiente. Al aprobar podés emitir un certificado con tu nombre, la ruta, el puntaje, la fecha, la cantidad de intentos y un código `MD-XXXXXXXX`.
+
+### Perfil público
+
+En la página de Microdosis, `#perfil` muestra todos tus certificados públicos en un solo lugar, con su verificación. Es el link para la sección *Destacados* de LinkedIn o la bio de Instagram.
 
 ### Compartir en LinkedIn e Instagram
 

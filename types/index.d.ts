@@ -13,9 +13,12 @@ export type Settings = {
   passes?: Record<string, Pass>
   attempts?: Record<string, number>
   certName?: string
+  welcomed?: boolean
 }
 // Examen en curso: preguntas en orden mezclado y respuestas dadas.
 export type Exam = { routeId: string; order: number[]; answers: number[]; result?: { score: number; total: number; passed: boolean; code?: string } }
+// Ruta que se está generando con /nueva-ruta.
+export type Creating = { topic: string; status: 'generando' | 'error'; msg?: string }
 export type Sync = 'cargando' | 'nube' | 'local'
 export type View = 'paso' | 'rutas' | 'examen'
 
@@ -30,6 +33,8 @@ declare module 'claude-code' {
       tabStart: number
       exam: Exam | null
       expanded: Record<string, string>
+      creating: Creating | null
+      customCount: number
     }
   }
 }

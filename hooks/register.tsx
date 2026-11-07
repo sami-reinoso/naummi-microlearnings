@@ -1,16 +1,18 @@
 import { atom, read, update } from 'claude-code'
 import type { Atom, EngineInterface, Register } from 'claude-code'
 
-import type { Exam, Pass, Progress, Settings, Sync, View } from '../types'
+import type { Creating, Exam, Pass, Progress, Settings, Sync, View } from '../types'
+import { GEN_SYSTEM, buildCustomRoutes, cleanCustomList } from './custom'
 import { FOX as FOX_IMG, FOX_BOX, PLANT, PLANT_BOX } from './fox-art'
 import { INTER_FACES } from './inter-font'
-import { DEFAULT_ROUTE, LEVEL_NAMES, ROUTES, TOPICS, TRACK_NAMES, prerequisite, routeById, searchRoutes } from './routes'
+import { CUSTOM, DEFAULT_ROUTE, LEVEL_NAMES, TOPICS, allRoutes, prerequisite, routeById, searchRoutes, trackName } from './routes'
 import type { Route } from './routes'
 
 // La página publicada guarda el progreso en tu espacio privado de esta base.
 const ARTIFACT = 'https://claude.ai/artifact/SYzMTGDceMDtrVZ9EkygWS'
 const COLLECTION = 'data/users/me'
 const SETTINGS_DOC = 'microdosis-ajustes'
+const CUSTOM_DOC = 'microdosis-mis-rutas'
 // Certificados: colección compartida de la página, legible para quien verifique un código.
 const CERTS = 'certificados'
 const PASS_RATIO = 0.75
@@ -28,6 +30,9 @@ const sync = atom({ plugin: 'microdosis', key: 'sync' } as const, 'cargando' as 
 const view = atom({ plugin: 'microdosis', key: 'view' } as const, 'paso' as View)
 const query = atom({ plugin: 'microdosis', key: 'query' } as const, '')
 const expanded = atom({ plugin: 'microdosis', key: 'expanded' } as const, {} as Record<string, string>)
+const creating = atom({ plugin: 'microdosis', key: 'creating' } as const, null as Creating | null) as unknown as Atom<Creating | null>
+// Cambia cuando cambian las rutas propias, para redibujar el panel.
+const customCount = atom({ plugin: 'microdosis', key: 'customCount' } as const, 0)
 const exam = atom({ plugin: 'microdosis', key: 'exam' } as const, null as Exam | null) as unknown as Atom<Exam | null>
 
 // Paleta: azul noche de fondo con acento durazno, en eco del naranja del zorrito.
@@ -68,7 +73,7 @@ function cleanProgress(raw: unknown): Progress | null {
 function cleanSettings(raw: unknown): Settings | null {
   if (!raw || typeof raw !== 'object') return null
   const r = raw as Record<string, unknown>
-  const known = new Set(ROUTES.map(x => x.id))
+  const known = new Set(allRoutes().map(x => x.id))
   const shown = Array.isArray(r.shown) ? r.shown.filter((x): x is string => typeof x === 'string' && known.has(x)) : []
   const active = typeof r.active === 'string' && known.has(r.active) ? r.active : DEFAULT_ROUTE
   const obj = (v: unknown) => (v && typeof v === 'object' ? v : {})
@@ -79,6 +84,7 @@ function cleanSettings(raw: unknown): Settings | null {
     passes: obj(r.passes) as Record<string, Pass>,
     attempts: obj(r.attempts) as Record<string, number>,
     certName: typeof r.certName === 'string' ? r.certName : '',
+    welcomed: r.welcomed === true,
   }
 }
 
@@ -124,6 +130,13 @@ async function push($: EngineInterface, doc: string, data: Record<string, unknow
 function save($: EngineInterface, what: string) {
   chain = chain
     .then(async () => {
+      if (what === 'mis-rutas') {
+        await $.store.set('custom-routes', CUSTOM)
+        if ((await read($, sync)) === 'local') return
+        await push($, CUSTOM_DOC, { routes: CUSTOM, at: Date.now() })
+        await update($, sync, () => 'nube' as Sync)
+        return
+      }
       const isSettings = what === 'ajustes'
       const data = isSettings ? await read($, settings) : await progressOf($, what)
       await $.store.set(isSettings ? 'settings' : `route:${what}`, data)
@@ -138,10 +151,17 @@ function save($: EngineInterface, what: string) {
   return chain
 }
 
+function setCustom(list: Route[]) {
+  CUSTOM.splice(0, CUSTOM.length, ...list)
+}
+
 async function load($: EngineInterface) {
+  // 0) Rutas propias primero: los ajustes pueden apuntar a una de ellas.
+  setCustom(cleanCustomList(await $.store.get('custom-routes')))
+  await update($, customCount, () => CUSTOM.length)
   // 1) Lo guardado en esta compu (la versión 0.1 guardaba la ruta variada como 'progress').
   const local: Record<string, Progress> = {}
-  for (const r of ROUTES) {
+  for (const r of allRoutes()) {
     const p = cleanProgress(await $.store.get(`route:${r.id}`)) ?? (r.id === 'variado' ? cleanProgress(await $.store.get('progress')) : null)
     if (p) local[r.id] = p
   }
@@ -154,7 +174,15 @@ async function load($: EngineInterface) {
   try {
     const rows = await pull($)
     const toPush: string[] = []
-    for (const r of ROUTES) {
+    // Rutas propias de la nube: se suman a las locales (las mismas ids no se duplican).
+    const remoteCustom = cleanCustomList((rows[CUSTOM_DOC] as { routes?: unknown } | undefined)?.routes)
+    const ids = new Set(CUSTOM.map(r => r.id))
+    const merged = [...CUSTOM, ...remoteCustom.filter(r => !ids.has(r.id))]
+    if (merged.length !== CUSTOM.length) { setCustom(merged); await $.store.set('custom-routes', CUSTOM); await update($, customCount, () => CUSTOM.length) }
+    if (CUSTOM.length > remoteCustom.length) toPush.push('mis-rutas')
+    const fresh = cleanSettings(await $.store.get('settings'))
+    if (fresh) await update($, settings, s => ({ ...s, active: fresh.active, shown: fresh.shown }))
+    for (const r of allRoutes()) {
       const remote = cleanProgress(rows[docOf(r.id)])
       const mine = (await read($, byRoute))[r.id]
       if (!remote && !mine) continue
@@ -242,6 +270,52 @@ const toggleShown = ($: EngineInterface, id: string) =>
     return { ...s, shown, active: s.active === id ? shown[0]! : s.active }
   })
 
+// --- Rutas propias: /nueva-ruta y «+ Crear ruta»
+
+async function createRoute($: EngineInterface, rawTopic: string) {
+  const topic = rawTopic.trim()
+  if (!topic) {
+    $.ui.toast('Escribí de qué querés la ruta, por ejemplo «SQL para análisis de datos»')
+    return
+  }
+  if ((await read($, creating))?.status === 'generando') return
+  await update($, creating, () => ({ topic, status: 'generando' as const }))
+  await update($, view, () => 'rutas' as View)
+  const r = await $.model.complete({
+    model: 'sonnet', system: GEN_SYSTEM, maxTokens: 16000, timeoutMs: 240000,
+    prompt: `Tema de la ruta: ${topic}\n\nArmá la ruta completa siguiendo el formato.`,
+  }).catch(() => null)
+  if (!r || !r.isAnswered) {
+    await update($, creating, () => ({ topic, status: 'error' as const, msg: 'No se pudo generar la ruta. Probá de nuevo en un momento.' }))
+    return
+  }
+  const built = buildCustomRoutes(r.text, topic)
+  if ('error' in built) {
+    await update($, creating, () => ({ topic, status: 'error' as const, msg: `${built.error} Probá de nuevo.` }))
+    return
+  }
+  setCustom([...CUSTOM, ...built.routes])
+  await update($, customCount, () => CUSTOM.length)
+  void save($, 'mis-rutas')
+  await update($, creating, () => null)
+  await update($, query, () => '')
+  await openRoute($, built.routes[0]!.id)
+  $.ui.toast(`Ruta «${built.routes[0]!.trackName}» creada. Está en Rutas › Mis rutas.`)
+}
+
+async function deleteCustomTrack($: EngineInterface, track: string) {
+  const gone = new Set(CUSTOM.filter(r => r.track === track).map(r => r.id))
+  setCustom(CUSTOM.filter(r => r.track !== track))
+  await update($, customCount, () => CUSTOM.length)
+  await setSettings($, s => {
+    const shown = s.shown.filter(id => !gone.has(id))
+    const safe = shown.length ? shown : [DEFAULT_ROUTE]
+    return { ...s, shown: safe, active: gone.has(s.active) ? safe[0]! : s.active }
+  })
+  void save($, 'mis-rutas')
+  $.ui.toast('Ruta borrada.')
+}
+
 // --- Examen de nivel y certificado
 
 function shuffle<T>(a: T[]): T[] {
@@ -314,7 +388,7 @@ async function issueCert($: EngineInterface, rawName: string) {
 }
 
 // Nombre corto para las pestañas: «Vue 3 · N1» en vez de «Vue 3 · Fundamentos».
-const shortName = (r: Route) => (r.track && r.level ? `${TRACK_NAMES[r.track] ?? r.name} · N${r.level}` : r.name)
+const shortName = (r: Route) => (r.track && r.level ? `${trackName(r)} · N${r.level}` : r.name)
 
 // --- Cabecera: tarjeta azul noche con el zorrito, el avance y el recorrido por tramos.
 
@@ -403,6 +477,7 @@ export const register: Register = on => {
   on('session.start', async ($, e, nxt) => {
     await $.command.register({ name: 'microdosis', description: 'Abrir el panel de Microdosis' })
     await $.command.register({ name: 'ok', description: 'Marcar hecho el paso de Microdosis y pasar al siguiente' })
+    await $.command.register({ name: 'nueva-ruta', description: 'Crear una ruta de Microdosis sobre un tema, en tres niveles con examen', argumentHint: 'tema' })
     void $.ui.open({ id: PANE, title: 'Microdosis' })
     void load($)
     return nxt(e)
@@ -411,6 +486,13 @@ export const register: Register = on => {
   on('command.run', { command: 'microdosis' }, async $ => {
     await $.ui.open({ id: PANE, title: 'Microdosis' })
     return { text: 'Panel de Microdosis abierto.' }
+  })
+
+  on('command.run', { command: 'nueva-ruta' }, async ($, e) => {
+    if (!e.args.trim()) return { text: 'Escribí el tema: /nueva-ruta SQL para análisis de datos' }
+    await $.ui.open({ id: PANE, title: 'Microdosis' })
+    void createRoute($, e.args)
+    return { text: `Creando la ruta «${e.args.trim()}» en el panel de Microdosis. Tarda alrededor de un minuto.` }
   })
 
   on('command.run', { command: 'ok' }, async $ => {
@@ -462,6 +544,25 @@ export const register: Register = on => {
     const certLink = (code: string, label: string) =>
       Link ? <Link key={`cert-${code}`} href={certUrl(code)} label={label} /> : <Text color="claude">{label}: {certUrl(code)}</Text>
 
+    await read($, customCount)
+    // --- Bienvenida: solo la primera vez
+    if (!s.welcomed && v === 'paso') {
+      const welcome = (then: () => Promise<unknown>) => () => void setSettings($, st => ({ ...st, welcomed: true })).then(then)
+      return (
+        <Box flexDirection="column" gap={2} paddingX={1} paddingY={1}>
+          {Svg && <Svg source={heroSvg(routeById(DEFAULT_ROUTE), EMPTY)} alt="El zorrito de Microdosis con su libro y su plantita" />}
+          <Text size="title" weight="bold">Hola, soy Microdosis</Text>
+          <Text>Aprendés de a poquito, sin salir de Claude: cada parada se lee en un minuto o tres y termina con una pregunta rápida. Hay rutas de cultura general, tecnología, comunicación, idiomas y más.</Text>
+          <Text>Las rutas por niveles terminan con un examen. Si lo aprobás, te llevás un certificado que podés compartir en LinkedIn.</Text>
+          <Box flexDirection="row" gap={1} flexWrap="wrap">
+            <Button key="w-start" label="Empezar con Variado" variant="primary" onPress={welcome(() => openRoute($, DEFAULT_ROUTE))} />
+            <Button key="w-routes" label="⌕ Elegir una ruta" variant="secondary" onPress={welcome(() => update($, view, () => 'rutas' as View))} />
+          </Box>
+          <Text size="footnote" color="subtle">¿No está el tema que buscás? En Rutas podés crear el tuyo, o escribí /nueva-ruta y el tema.</Text>
+        </Box>
+      )
+    }
+
     // --- Examen
     const ex = await read($, exam)
     if (v === 'examen' && ex) {
@@ -493,7 +594,7 @@ export const register: Register = on => {
       }
       const { score, passed, code } = ex.result
       const missed = ex.order.filter((q, i) => r.exam![q]![2] !== ex.answers[i]).map(q => r.exam![q]![0])
-      const next = ROUTES.find(x => x.track && x.track === r.track && x.level === (r.level ?? 0) + 1)
+      const next = allRoutes().find(x => x.track && x.track === r.track && x.level === (r.level ?? 0) + 1)
       return (
         <Box flexDirection="column" gap={2} paddingX={1} paddingY={1}>
           {header}
@@ -538,6 +639,7 @@ export const register: Register = on => {
     if (v === 'rutas') {
       const q = await read($, query)
       const exp = await read($, expanded)
+      const creatingNow = await read($, creating)
       const found = searchRoutes(q)
       const info = (r: Route) => {
         const p = all[r.id] ?? EMPTY
@@ -577,9 +679,15 @@ export const register: Register = on => {
         return (
           <Box key={`track-${t}`} flexDirection="column" gap={1} paddingX={2} paddingY={1} borderStyle="round" borderColor={anyShown ? FOX : 'subtle'}>
             <Box flexDirection="row" justifyContent="space-between" alignItems="center">
-              <Text size="heading" weight="semibold">{TRACK_NAMES[t] ?? t}</Text>
+              <Text size="heading" weight="semibold">{trackName(levels[0]!)}</Text>
               <Text size="caption" mono color="subtle">{levels.filter(r => info(r).pass).length}/{levels.length} NIVELES</Text>
             </Box>
+            {levels[0]!.custom && (
+              <Box flexDirection="row" gap={1} alignItems="center" justifyContent="space-between">
+                <Text size="footnote" color="subtle">Creada con IA: revisá el contenido antes de usarla como referencia.</Text>
+                <Button key={`del-${t}`} label="Borrar" variant="secondary" onPress={() => void deleteCustomTrack($, t)} />
+              </Box>
+            )}
             <Box flexDirection="row" gap={1} flexWrap="wrap">
               {levels.map(r => {
                 const i = info(r)
@@ -620,7 +728,7 @@ export const register: Register = on => {
         return (
           <Box key={`topic-${topic}`} flexDirection="column" gap={1}>
             <Text size="caption" mono color="claude">{topic.toUpperCase()}</Text>
-            {tracks.map(t => trackCard(t, ROUTES.filter(r => r.track === t).sort((a, b) => (a.level ?? 0) - (b.level ?? 0))))}
+            {tracks.map(t => trackCard(t, allRoutes().filter(r => r.track === t).sort((a, b) => (a.level ?? 0) - (b.level ?? 0))))}
             {inTopic.filter(r => !r.track).map(looseCard)}
           </Box>
         )
@@ -634,7 +742,22 @@ export const register: Register = on => {
           {Input && (
             <Input key="search" placeholder="Buscar: vue, git, oratoria, avanzado…" value={q} submitLabel="Limpiar" onInput={val => void update($, query, () => val)} onSubmit={() => void update($, query, () => '')} />
           )}
-          {found.length === 0 ? <Text color="subtle">No hay rutas que coincidan con «{q}».</Text> : sections}
+          {creatingNow?.status === 'generando' ? (
+            <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} backgroundColor={TINT} borderStyle="round" borderColor={FOX}>
+              <Text size="caption" mono color="claude">CREANDO RUTA</Text>
+              <Text weight="semibold">«{creatingNow.topic}»</Text>
+              <Text size="footnote" color="subtle">El zorrito está armando tres niveles con paradas y examen. Tarda alrededor de un minuto; podés seguir usando Claude mientras tanto.</Text>
+            </Box>
+          ) : (
+            <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} borderStyle="round" borderColor="subtle">
+              <Text weight="semibold">+ Crear una ruta</Text>
+              <Text size="footnote" color="subtle">{found.length === 0 && q ? `No hay rutas de «${q}». ` : ''}Escribí un tema y se arma en tres niveles, con examen y certificado.</Text>
+              {Input && <Input key="create" placeholder="Ej.: SQL para análisis de datos, negociación, React" value={found.length === 0 ? q : ''} submitLabel="Crear ruta" onSubmit={val => void createRoute($, val)} />}
+              {creatingNow?.status === 'error' && <Text size="footnote" color="error">{creatingNow.msg}</Text>}
+            </Box>
+          )}
+          {found.length === 0 ? null : sections}
+          {Link && <Link key="perfil" href={`${ARTIFACT}#perfil`} label="Ver mi perfil público de certificados" />}
           <Text size="footnote" color="subtle">Las rutas con niveles terminan cada nivel con un examen; se aprueba con el {Math.round(PASS_RATIO * 100)} % y habilita el siguiente.</Text>
           {footer}
         </Box>
