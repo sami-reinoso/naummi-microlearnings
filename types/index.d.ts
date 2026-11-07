@@ -14,13 +14,15 @@ export type Settings = {
   attempts?: Record<string, number>
   certName?: string
   welcomed?: boolean
+  // Camino elegido en «Elige tu camino» (id de hooks/caminos.ts).
+  path?: string
 }
 // Examen en curso: preguntas en orden mezclado y respuestas dadas.
 export type Exam = { routeId: string; order: number[]; answers: number[]; result?: { score: number; total: number; passed: boolean; code?: string } }
 // Ruta que se está generando con /nueva-ruta.
 export type Creating = { topic: string; status: 'generando' | 'error'; msg?: string }
 export type Sync = 'cargando' | 'nube' | 'local'
-export type View = 'paso' | 'rutas' | 'examen'
+export type View = 'paso' | 'rutas' | 'examen' | 'caminos'
 
 declare module 'claude-code' {
   interface PluginState {

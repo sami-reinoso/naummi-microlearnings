@@ -35,6 +35,24 @@ Tocá **Rutas** en el panel para buscar y elegir qué microlearnings ver. El bus
 | Cultura general | Variado | 48 paradas |
 | Astrología | Astrología: el mapa | 8 paradas |
 
+### Elegí tu camino
+
+Un camino es un conjunto de rutas ya armado para un rol y un nivel de experiencia. Abrilo desde **◇ Caminos** en Rutas, desde la bienvenida o con `/camino`. Hay 39 caminos en 13 familias:
+
+| Área | Familia | Niveles |
+| --- | --- | --- |
+| Desarrollo | Frontend con Vue · Desarrollo web con TypeScript · Backend con C# y .NET · Full stack: Vue + .NET · Desarrollo con Python | Jr · Ssr · Sr |
+| Datos | Análisis de datos · Ingeniería de datos | Jr · Ssr · Sr |
+| Producto y diseño | Diseño UX/UI · Product Manager | Jr · Ssr · Sr |
+| Carrera y habilidades | Liderazgo técnico | Referente · Tech Lead · Staff |
+| Carrera y habilidades | Trabajar para el exterior | Primeros pasos · En camino · Listo |
+| Carrera y habilidades | Freelance | Arrancando · Con clientes · Consolidado |
+| Carrera y habilidades | Comunicar mejor | Básico · Intermedio · Avanzado |
+
+Cada nivel incluye los anteriores, ordenados para avanzar parejo: primero todos los niveles 1, después los 2 y los 3. Al elegir un camino se abre la primera ruta que te falta. Una franja arriba del paso muestra el avance y, al terminar una ruta, te ofrece seguir con la próxima. Una ruta cuenta como hecha cuando aprobás su examen o, si no tiene, cuando hiciste todas las paradas. El avance es el de cada ruta, así que sirve para todos los caminos que la incluyen, y dejar un camino no borra nada.
+
+Los caminos se declaran en `hooks/caminos.ts`.
+
 ### Crear tus propias rutas
 
 Escribí `/nueva-ruta` y el tema (por ejemplo `/nueva-ruta negociación salarial`), o usá **+ Crear una ruta** en la sección Rutas. Claude arma la ruta en tres niveles, con paradas, examen y certificado, en alrededor de un minuto. Aparece en **Mis rutas** con el aviso de que fue creada con IA, para que la revises. Se sincroniza con tu cuenta y se puede borrar.

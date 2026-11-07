@@ -9,6 +9,8 @@ import { PRESETS, PROJECT_FILE, loadBrand, loadProject, paletteCss } from './bra
 import type { Brand, BrandOptions } from './brand'
 import { CUSTOM, DEFAULT_ROUTE, LEVEL_NAMES, TOPICS, allRoutes, prerequisite, routeById, searchRoutes, trackName } from './routes'
 import type { Route } from './routes'
+import { AREAS, FAMILIES, caminoById } from './caminos'
+import type { Camino } from './caminos'
 
 // La página publicada guarda el progreso en tu espacio privado de esta base.
 const ARTIFACT = 'https://claude.ai/artifact/SYzMTGDceMDtrVZ9EkygWS'
@@ -128,6 +130,7 @@ function cleanSettings(raw: unknown): Settings | null {
     attempts: obj(r.attempts) as Record<string, number>,
     certName: typeof r.certName === 'string' ? r.certName : '',
     welcomed: r.welcomed === true,
+    ...(typeof r.path === 'string' && caminoById(r.path) ? { path: r.path } : {}),
   }
 }
 
@@ -224,7 +227,7 @@ async function load($: EngineInterface) {
     if (merged.length !== CUSTOM.length) { setCustom(merged); await $.store.set('custom-routes', CUSTOM); await update($, customCount, () => CUSTOM.length) }
     if (CUSTOM.length > remoteCustom.length) toPush.push('mis-rutas')
     const fresh = cleanSettings(await $.store.get('settings'))
-    if (fresh) await update($, settings, s => ({ ...s, active: fresh.active, shown: fresh.shown }))
+    if (fresh) await update($, settings, s => ({ ...s, active: fresh.active, shown: fresh.shown, path: fresh.path }))
     for (const r of allRoutes()) {
       const remote = cleanProgress(rows[docOf(r.id)])
       const mine = (await read($, byRoute))[r.id]
@@ -326,6 +329,32 @@ const toggleShown = ($: EngineInterface, id: string) =>
     const shown = s.shown.filter(x => x !== id)
     return { ...s, shown, active: s.active === id ? shown[0]! : s.active }
   })
+
+// --- Caminos: conjuntos de rutas por rol (ver caminos.ts)
+
+// Una ruta cuenta como hecha en un camino si aprobaste su examen o, si no tiene examen, hiciste todas las paradas.
+const routeComplete = (r: Route, p: Progress | undefined, passes: Record<string, Pass>) =>
+  r.exam ? !!passes[r.id] : countDone(p ?? EMPTY) >= r.steps.length
+
+function caminoProgress(c: Camino, all: Record<string, Progress>, passes: Record<string, Pass>) {
+  const routes = c.routes.map(id => routeById(id))
+  const done = routes.filter(r => routeComplete(r, all[r.id], passes))
+  const next = routes.find(r => !routeComplete(r, all[r.id], passes))
+  return { routes, done: done.length, total: routes.length, next, stops: routes.reduce((n, r) => n + r.steps.length, 0) }
+}
+
+async function chooseCamino($: EngineInterface, id: string) {
+  const c = caminoById(id)
+  if (!c) return
+  const passes = (await read($, settings)).passes ?? {}
+  const { next } = caminoProgress(c, await read($, byRoute), passes)
+  await setSettings($, s => ({ ...s, path: id }))
+  if (next) await openRoute($, next.id)
+  else await update($, view, () => 'paso' as View)
+  $.ui.toast(next ? `Camino «${c.name}». Arrancás con ${next.name}.` : `Ya completaste «${c.name}».`)
+}
+
+const leaveCamino = ($: EngineInterface) => setSettings($, s => ({ ...s, path: undefined }))
 
 // --- Rutas propias: /nueva-ruta y «+ Crear ruta»
 
@@ -555,6 +584,7 @@ export const register: Register = (on, options) => {
     await $.command.register({ name: 'microdosis', description: 'Abrir el panel de Microdosis' })
     await $.command.register({ name: 'ok', description: 'Marcar hecho el paso de Microdosis y pasar al siguiente' })
     await $.command.register({ name: 'nueva-ruta', description: 'Crear una ruta de Microdosis sobre un tema, en tres niveles con examen', argumentHint: 'tema' })
+    await $.command.register({ name: 'camino', description: 'Elegir un camino de Microdosis: rutas armadas por rol, como Frontend Vue Jr, Ssr o Sr' })
     void $.ui.open({ id: PANE, title: 'Microdosis' })
     // Las rutas del proyecto se aplican después de leer el progreso guardado, para no pisarlo.
     void Promise.all([branded, load($)]).then(() => applyProjectRoutes($))
@@ -564,6 +594,12 @@ export const register: Register = (on, options) => {
   on('command.run', { command: 'microdosis' }, async $ => {
     await $.ui.open({ id: PANE, title: 'Microdosis' })
     return { text: 'Panel de Microdosis abierto.' }
+  })
+
+  on('command.run', { command: 'camino' }, async $ => {
+    await update($, view, () => 'caminos' as View)
+    await $.ui.open({ id: PANE, title: 'Microdosis' })
+    return { text: 'Elegí tu camino en el panel de Microdosis.' }
   })
 
   on('command.run', { command: 'nueva-ruta' }, async ($, e) => {
@@ -635,8 +671,10 @@ export const register: Register = (on, options) => {
           <Text>Las rutas por niveles terminan con un examen. Si lo aprobás, te llevás un certificado que podés compartir en LinkedIn.</Text>
           <Box flexDirection="row" gap={1} flexWrap="wrap">
             <Button key="w-start" label={`Empezar con ${shortName(routeById(startRoute()))}`} variant="primary" onPress={welcome(() => openRoute($, startRoute()))} />
+            <Button key="w-caminos" label="◇ Elegir mi camino" variant="secondary" onPress={welcome(() => update($, view, () => 'caminos' as View))} />
             <Button key="w-routes" label="⌕ Elegir una ruta" variant="secondary" onPress={welcome(() => update($, view, () => 'rutas' as View))} />
           </Box>
+          <Text size="footnote" color="subtle">Un camino es un conjunto de rutas armado para un rol, como Frontend con Vue Jr, Ssr o Sr.</Text>
           <Text size="footnote" color="subtle">¿No está el tema que buscás? En Rutas podés crear el tuyo, o escribí /nueva-ruta y el tema.</Text>
         </Box>
       )
@@ -674,6 +712,8 @@ export const register: Register = (on, options) => {
       const { score, passed, code } = ex.result
       const missed = ex.order.filter((q, i) => r.exam![q]![2] !== ex.answers[i]).map(q => r.exam![q]![0])
       const next = allRoutes().find(x => x.track && x.track === r.track && x.level === (r.level ?? 0) + 1)
+      const cam = caminoById(s.path)
+      const camNext = cam ? caminoProgress(cam, all, passes).next : undefined
       return (
         <Box flexDirection="column" gap={2} paddingX={1} paddingY={1}>
           {header}
@@ -707,9 +747,104 @@ export const register: Register = (on, options) => {
           <Box flexDirection="row" gap={1} flexWrap="wrap">
             {!passed && <Button key="retry" label="Reintentar" variant="primary" onPress={() => void startExam($, r.id)} />}
             {!passed && <Button key="review" label="Volver a las paradas" variant="secondary" onPress={() => void update($, exam, () => null).then(() => openRoute($, r.id))} />}
+            {passed && camNext && camNext.id !== r.id && camNext.id !== next?.id &&<Button key="next-camino" label={`Seguir el camino: ${shortName(camNext)}`} variant="primary" onPress={() => void update($, exam, () => null).then(() => openRoute($, camNext.id))} />}
             {passed && next && <Button key="next-level" label={`Empezar ${LEVEL_NAMES[next.level ?? 1]}`} variant="primary" onPress={() => void update($, exam, () => null).then(() => openRoute($, next.id))} />}
             {passed && <Button key="to-routes" label="Ir a Rutas" variant="secondary" onPress={() => void update($, exam, () => null).then(() => update($, view, () => 'rutas' as View))} />}
           </Box>
+        </Box>
+      )
+    }
+
+    // --- Elige tu camino: familias por rol, con niveles (Jr, Ssr, Sr…) y la lista de rutas de cada uno
+    if (v === 'caminos') {
+      const exp = await read($, expanded)
+      const mine = caminoById(s.path)
+      const icon = (r: Route, isNext: boolean) => {
+        if (routeComplete(r, all[r.id], passes)) return { mark: '✓', color: 'success' }
+        if (isNext) return { mark: '▸', color: 'claude' }
+        const d = countDone(all[r.id] ?? EMPTY)
+        return { mark: d ? '◐' : '○', color: 'subtle' }
+      }
+      const routeList = (c: Camino) => {
+        const pr = caminoProgress(c, all, passes)
+        return (
+          <Box flexDirection="column">
+            {pr.routes.map(r => {
+              const ic = icon(r, r.id === pr.next?.id)
+              const d = countDone(all[r.id] ?? EMPTY)
+              const extra = routeComplete(r, all[r.id], passes) ? '' : r.exam && d >= r.steps.length ? ' · falta examen' : d ? ` · ${d}/${r.steps.length}` : ''
+              return (
+                <Text key={`cr-${c.id}-${r.id}`} color={ic.color === 'subtle' ? undefined : ic.color}>
+                  <Text color={ic.color}>{ic.mark}</Text>  {shortName(r)}<Text color="subtle">{extra}</Text>
+                </Text>
+              )
+            })}
+          </Box>
+        )
+      }
+      const familyCard = (fam: (typeof FAMILIES)[number]) => {
+        const sel = fam.caminos.find(c => c.id === exp[`camino:${fam.id}`]) ?? fam.caminos.find(c => c.id === s.path) ?? fam.caminos[0]!
+        const pr = caminoProgress(sel, all, passes)
+        const isMine = s.path === sel.id
+        const famMine = fam.caminos.some(c => c.id === s.path)
+        const doneLevels = fam.caminos.filter(c => { const x = caminoProgress(c, all, passes); return x.done === x.total }).length
+        return (
+          <Box key={`fam-${fam.id}`} flexDirection="column" gap={1} paddingX={2} paddingY={1} borderStyle="round" borderColor={famMine ? brand.theme.panelAccent : 'subtle'}>
+            <Box flexDirection="row" justifyContent="space-between" alignItems="center">
+              <Text size="heading" weight="semibold">{fam.name}</Text>
+              <Text size="caption" mono color="subtle">{doneLevels}/{fam.caminos.length} COMPLETOS</Text>
+            </Box>
+            <Text size="footnote" color="subtle">{fam.blurb}</Text>
+            <Box flexDirection="row" gap={1} flexWrap="wrap">
+              {fam.caminos.map(c => {
+                const x = caminoProgress(c, all, passes)
+                const label = `${x.done === x.total ? '✓ ' : c.id === s.path ? '● ' : ''}${c.label}`
+                return <Button key={`cl-${c.id}`} label={label} variant={c.id === sel.id ? 'primary' : 'secondary'} onPress={() => void update($, expanded, m => ({ ...m, [`camino:${fam.id}`]: c.id }))} />
+              })}
+            </Box>
+            <Box flexDirection="column" gap={1} paddingTop={1}>
+              <Text weight="semibold">{sel.blurb}</Text>
+              <Text size="footnote" color="subtle">{pr.total} rutas · {pr.stops} paradas · {pr.done}/{pr.total} hechas</Text>
+              {routeList(sel)}
+              <Box flexDirection="row" gap={1} flexWrap="wrap">
+                {isMine ? (
+                  pr.next && <Button key={`cgo-${sel.id}`} label={`Seguir: ${shortName(pr.next)}`} variant="primary" onPress={() => void openRoute($, pr.next!.id)} />
+                ) : (
+                  <Button key={`cpick-${sel.id}`} label={pr.done === pr.total ? 'Elegir (ya completo)' : 'Elegir este camino'} variant="primary" onPress={() => void chooseCamino($, sel.id)} />
+                )}
+                {isMine && <Text size="footnote" color="claude">Es tu camino</Text>}
+              </Box>
+            </Box>
+          </Box>
+        )
+      }
+      const minePr = mine ? caminoProgress(mine, all, passes) : null
+      return (
+        <Box flexDirection="column" gap={2} paddingX={1} paddingY={1}>
+          <Box flexDirection="row" justifyContent="space-between" alignItems="center">
+            <Text size="title" weight="bold">Elegí tu camino</Text>
+            <Button key="back" label="← Volver" variant="secondary" onPress={() => void update($, view, () => 'paso' as View)} />
+          </Box>
+          <Text color="subtle">Conjuntos de rutas armados para un rol y un nivel. Elegí uno y te voy llevando ruta por ruta. Lo que hacés en una ruta cuenta para todos los caminos que la incluyen.</Text>
+          {mine && minePr && (
+            <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} {...highlight()} borderStyle="round">
+              <Text size="caption" mono color="claude">TU CAMINO</Text>
+              <Text weight="semibold">{mine.name}</Text>
+              <Text size="footnote" color="subtle">{minePr.done} de {minePr.total} rutas · {minePr.next ? `sigue ${minePr.next.name}` : '¡completo!'}</Text>
+              <Box flexDirection="row" gap={1} flexWrap="wrap">
+                {minePr.next && <Button key="mine-go" label="Seguir" variant="primary" onPress={() => void openRoute($, minePr.next!.id)} />}
+                <Button key="mine-leave" label="Dejar el camino" variant="secondary" onPress={() => void leaveCamino($)} />
+              </Box>
+            </Box>
+          )}
+          {AREAS.map(area => (
+            <Box key={`area-${area}`} flexDirection="column" gap={1}>
+              <Text size="caption" mono color="claude">{area.toUpperCase()}</Text>
+              {FAMILIES.filter(f => f.area === area).map(familyCard)}
+            </Box>
+          ))}
+          <Text size="footnote" color="subtle">✓ hecha · ▸ la que sigue · ◐ empezada · ○ pendiente. Las rutas con examen cuentan como hechas al aprobarlo. Dejar un camino no borra tu avance.</Text>
+          {footer}
         </Box>
       )
     }
@@ -817,8 +952,18 @@ export const register: Register = (on, options) => {
         <Box flexDirection="column" gap={2} paddingX={1} paddingY={1}>
           <Box flexDirection="row" justifyContent="space-between" alignItems="center">
             <Text size="title" weight="bold">Rutas</Text>
-            <Button key="back" label="← Volver" variant="secondary" onPress={() => void update($, view, () => 'paso' as View)} />
+            <Box flexDirection="row" gap={1}>
+              <Button key="to-caminos" label="◇ Caminos" variant="secondary" onPress={() => void update($, view, () => 'caminos' as View)} />
+              <Button key="back" label="← Volver" variant="secondary" onPress={() => void update($, view, () => 'paso' as View)} />
+            </Box>
           </Box>
+          {!q && !s.path && (
+            <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} {...highlight()} borderStyle="round">
+              <Text weight="semibold">◇ Elegí tu camino</Text>
+              <Text size="footnote" color="subtle">Rutas ya armadas por rol: Frontend con Vue, Backend .NET, Datos, Diseño, Product Manager, Liderazgo… en Jr, Ssr y Sr.</Text>
+              <Button key="caminos-cta" label="Ver caminos" variant="primary" onPress={() => void update($, view, () => 'caminos' as View)} />
+            </Box>
+          )}
           {Input && (
             <Input key="search" placeholder="Buscar: vue, git, oratoria, avanzado…" value={q} submitLabel="Limpiar" onInput={val => void update($, query, () => val)} onSubmit={() => void update($, query, () => '')} />
           )}
@@ -853,6 +998,8 @@ export const register: Register = (on, options) => {
     const picked = p.ans[cur]
     const n = countDone(p)
     const pass = passes[route.id]
+    const camino = caminoById(s.path)
+    const camPr = camino ? caminoProgress(camino, all, passes) : null
 
     // Pestañas en una sola línea: dos visibles, la activa siempre entre ellas; ‹ › pasan a la ruta anterior o siguiente.
     const VISIBLE = 2
@@ -885,6 +1032,20 @@ export const register: Register = (on, options) => {
           <Button key="routes" label="⌕ Rutas" variant="secondary" onPress={() => void update($, view, () => 'rutas' as View)} />
         </Box>
 
+        {camino && camPr && (
+          <Box flexDirection="row" gap={1} alignItems="center" justifyContent="space-between" flexWrap="wrap">
+            <Text size="footnote" color="subtle">
+              <Text color="claude">◇</Text> {camino.name} · {camPr.next ? `${camPr.done}/${camPr.total} rutas` : '¡camino completo!'}
+            </Text>
+            <Box flexDirection="row" gap={1}>
+              {camPr.next && camPr.next.id !== route.id && !!route.exam && routeComplete(route, p, passes) && (
+                <Button key="cam-next" label={`Seguir: ${shortName(camPr.next)}`} variant="primary" onPress={() => void openRoute($, camPr.next!.id)} />
+              )}
+              <Button key="cam-view" label="Ver camino" variant="secondary" onPress={() => void update($, view, () => 'caminos' as View)} />
+            </Box>
+          </Box>
+        )}
+
         {!Svg ? (
           <Box flexDirection="column">
             <Text bold color="claude">{route.name} · Parada {cur + 1}</Text>
@@ -902,6 +1063,7 @@ export const register: Register = (on, options) => {
             </Text>
             <Box flexDirection="row" gap={1} flexWrap="wrap">
               {route.exam && <Button key="exam-now" label="Rendir examen" variant="primary" onPress={() => void startExam($, route.id)} />}
+              {!route.exam && camPr?.next && camPr.next.id !== route.id && <Button key="cam-next-fin" label={`Seguir el camino: ${shortName(camPr.next)}`} variant="primary" onPress={() => void openRoute($, camPr.next!.id)} />}
               <Button key="other-route" label="Elegir otra ruta" variant={route.exam ? 'secondary' : 'primary'} onPress={() => void update($, view, () => 'rutas' as View)} />
             </Box>
           </Box>
