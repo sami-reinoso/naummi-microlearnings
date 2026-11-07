@@ -29,6 +29,7 @@ declare module 'claude-code' {
       query: string
       tabStart: number
       exam: Exam | null
+      expanded: Record<string, string>
     }
   }
 }

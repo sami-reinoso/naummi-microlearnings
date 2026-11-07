@@ -28,6 +28,7 @@ const sync = atom({ plugin: 'microdosis', key: 'sync' } as const, 'cargando' as 
 const view = atom({ plugin: 'microdosis', key: 'view' } as const, 'paso' as View)
 const query = atom({ plugin: 'microdosis', key: 'query' } as const, '')
 const tabStart = atom({ plugin: 'microdosis', key: 'tabStart' } as const, 0)
+const expanded = atom({ plugin: 'microdosis', key: 'expanded' } as const, {} as Record<string, string>)
 const exam = atom({ plugin: 'microdosis', key: 'exam' } as const, null as Exam | null) as unknown as Atom<Exam | null>
 
 // Paleta: azul noche de fondo con acento durazno, en eco del naranja del zorrito.
@@ -324,7 +325,7 @@ function esc(s: string) {
 
 // El zorrito de Naummi abrazando su libro, con su plantita al lado, parados en el piso.
 // Coordenadas: píxeles de la ilustración original, escalados a la cabecera.
-const SCENE = { k: 0.2712, x: 209, y: 8, ox: FOX_BOX[0]!, oy: FOX_BOX[1]! }
+const SCENE = { k: 0.2061, x: 242.5, y: 2, ox: FOX_BOX[0]!, oy: FOX_BOX[1]! }
 const at = (px: number, py: number): [number, number] => [SCENE.x + (px - SCENE.ox) * SCENE.k, SCENE.y + (py - SCENE.oy) * SCENE.k]
 const box = (b: number[]) => {
   const [x, y] = at(b[0]!, b[1]!)
@@ -344,9 +345,9 @@ function foxScene(cheer: boolean): string {
 </circle>`).join('')
     : ''
   const f = (n: number) => n.toFixed(1)
-  return `<ellipse cx="${f(fx - 4)}" cy="${f(fy + 1)}" rx="96" ry="10" fill="url(#floor)"/>
-<ellipse cx="${f(fx)}" cy="${f(fy + 0.5)}" rx="33" ry="4.6" fill="#020a12" opacity="0.55"/>
-<ellipse cx="${f(px)}" cy="${f(py + 0.3)}" rx="15" ry="3.2" fill="#020a12" opacity="0.5"/>
+  return `<ellipse cx="${f(fx - 4)}" cy="${f(fy + 1)}" rx="76" ry="8" fill="url(#floor)"/>
+<ellipse cx="${f(fx)}" cy="${f(fy + 0.5)}" rx="26" ry="3.8" fill="#020a12" opacity="0.55"/>
+<ellipse cx="${f(px)}" cy="${f(py + 0.3)}" rx="12" ry="2.6" fill="#020a12" opacity="0.5"/>
 <g transform="translate(${f(fx)} ${f(fy)})"><g>
   <animateTransform attributeName="transform" type="scale" values="1 1;1.006 1.014;1 1" keyTimes="0;0.5;1" dur="3.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1"/>
   <image href="${FOX_IMG}" x="${f(fox.x - fx)}" y="${f(fox.y - fy)}" width="${f(fox.w)}" height="${f(fox.h)}"/>
@@ -359,7 +360,7 @@ ${sparks}`
 }
 
 function heroSvg(route: Route, p: Progress, cheer = false): string {
-  const W = 360, H = 190
+  const W = 360, H = 140
   const total = route.steps.length
   const n = countDone(p)
   const pct = Math.round((n / total) * 100)
@@ -368,7 +369,7 @@ function heroSvg(route: Route, p: Progress, cheer = false): string {
   const mono = 'font-family="ui-monospace,SFMono-Regular,Menlo,monospace"'
 
   // La barra se llena de izquierda a derecha con las paradas hechas; un punto marca dónde estás.
-  const x0 = 20, y = 170, groupGap = 7
+  const x0 = 20, y = 127, groupGap = 7
   const gaps = route.legs.length - 1
   const tickW = (W - 2 * x0 - groupGap * gaps) / total
   const ticks: string[] = []
@@ -377,9 +378,9 @@ function heroSvg(route: Route, p: Progress, cheer = false): string {
     const x = x0 + i * tickW + s[0] * groupGap
     const pad = Math.min(0.8, tickW * 0.12)
     if (i === p.cur) curX = x + tickW / 2
-    ticks.push(`<rect x="${(x + pad).toFixed(1)}" y="${y - 4}" width="${(tickW - 2 * pad).toFixed(1)}" height="8" rx="1.6" fill="${i < n ? FOX : 'rgba(255,255,255,0.16)'}"/>`)
+    ticks.push(`<rect x="${(x + pad).toFixed(1)}" y="${y - 3.5}" width="${(tickW - 2 * pad).toFixed(1)}" height="7" rx="1.5" fill="${i < n ? FOX : 'rgba(255,255,255,0.16)'}"/>`)
   })
-  ticks.push(`<circle cx="${curX.toFixed(1)}" cy="${y - 10}" r="2.4" fill="#ffffff"/>`)
+  ticks.push(`<circle cx="${curX.toFixed(1)}" cy="${y - 8.5}" r="2.2" fill="#ffffff"/>`)
 
   const headline = n === total ? '¡Ruta completa!' : `Parada ${p.cur + 1}`
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
@@ -388,13 +389,13 @@ function heroSvg(route: Route, p: Progress, cheer = false): string {
   <radialGradient id="floor" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="${MINT}" stop-opacity="0.16"/><stop offset="1" stop-color="${MINT}" stop-opacity="0"/></radialGradient>
   <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="${FOX}" stop-opacity="0.35"/><stop offset="1" stop-color="${FOX}" stop-opacity="0"/></radialGradient>
 </defs>
-<rect width="${W}" height="${H}" rx="18" fill="url(#bg)"/>
-<circle cx="${W - 82}" cy="78" r="78" fill="url(#glow)"/>
+<rect width="${W}" height="${H}" rx="16" fill="url(#bg)"/>
+<circle cx="${W - 66}" cy="60" r="62" fill="url(#glow)"/>
 ${foxScene(cheer)}
-<text x="20" y="34" ${mono} font-size="10" letter-spacing="1.6" fill="${MINT}">${esc(route.name.toUpperCase())}</text>
-<text x="20" y="70" ${sans} font-size="26" font-weight="700" letter-spacing="-0.5" fill="#ffffff">${esc(headline)}</text>
-<text x="20" y="94" ${sans} font-size="13" fill="rgba(255,255,255,0.72)">${n} de ${total} hechas · ${pct}%</text>
-<text x="20" y="${y - 16}" ${mono} font-size="9" letter-spacing="1" fill="${MINT}">${esc(route.legs[leg].toUpperCase())}</text>
+<text x="20" y="26" ${mono} font-size="9.5" letter-spacing="1.6" fill="${MINT}">${esc(route.name.toUpperCase())}</text>
+<text x="20" y="56" ${sans} font-size="23" font-weight="700" letter-spacing="-0.5" fill="#ffffff">${esc(headline)}</text>
+<text x="20" y="76" ${sans} font-size="12.5" fill="rgba(255,255,255,0.72)">${n} de ${total} hechas · ${pct}%</text>
+<text x="20" y="${y - 15}" ${mono} font-size="8.5" letter-spacing="1" fill="${MINT}">${esc(route.legs[leg].toUpperCase())}</text>
 ${ticks.join('')}
 </svg>`
 }
@@ -456,11 +457,11 @@ export const register: Register = on => {
       sy === 'nube' ? 'Sincronizado con claude.ai' : sy === 'local' ? 'Guardado en esta compu' : 'Conectando con claude.ai…'
     const footer = (
       <Text size="footnote" color="subtle">
-        <Text color={sy === 'nube' ? 'success' : 'subtle'}>●</Text> {syncText} · /ok marca y avanza
+        <Text color={sy === 'nube' ? 'success' : 'subtle'}>●</Text> {syncText}
       </Text>
     )
     const certLink = (code: string, label: string) =>
-      Link ? <Link key={`cert-${code}`} href={certUrl(code)} label={label} /> : <Text color={FOX}>{label}: {certUrl(code)}</Text>
+      Link ? <Link key={`cert-${code}`} href={certUrl(code)} label={label} /> : <Text color="claude">{label}: {certUrl(code)}</Text>
 
     // --- Examen
     const ex = await read($, exam)
@@ -470,7 +471,7 @@ export const register: Register = on => {
       const need = Math.ceil(total * PASS_RATIO)
       const header = (
         <Box flexDirection="row" justifyContent="space-between" alignItems="center">
-          <Text size="caption" mono color={FOX}>EXAMEN · {r.name.toUpperCase()}</Text>
+          <Text size="caption" mono color="claude">EXAMEN · {r.name.toUpperCase()}</Text>
           <Button key="exit" label="Salir" variant="secondary" onPress={() => void update($, exam, () => null).then(() => update($, view, () => 'rutas' as View))} />
         </Box>
       )
@@ -507,7 +508,7 @@ export const register: Register = on => {
           )}
           {passed && !code && (
             <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} backgroundColor={TINT} borderStyle="round" borderColor={FOX}>
-              <Text size="caption" mono color={FOX}>CERTIFICADO</Text>
+              <Text size="caption" mono color="claude">CERTIFICADO</Text>
               <Text>Escribí tu nombre como querés que figure. Se registra con fecha, puntaje y un código de verificación.</Text>
               {Input ? (
                 <Input key="cert-name" label="Nombre completo" value={s.certName ?? ''} submitLabel="Emitir certificado" onSubmit={value => void issueCert($, value)} />
@@ -518,7 +519,7 @@ export const register: Register = on => {
           )}
           {passed && code && (
             <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} backgroundColor={TINT} borderStyle="round" borderColor={FOX}>
-              <Text size="caption" mono color={FOX}>CERTIFICADO EMITIDO</Text>
+              <Text size="caption" mono color="claude">CERTIFICADO EMITIDO</Text>
               <Text weight="semibold">{code}</Text>
               {certLink(code, 'Ver y compartir el certificado')}
               {next && <Text size="footnote" color="subtle">Se habilitó {next.name}.</Text>}
@@ -537,37 +538,79 @@ export const register: Register = on => {
     // --- Rutas: buscador, temas y niveles
     if (v === 'rutas') {
       const q = await read($, query)
+      const exp = await read($, expanded)
       const found = searchRoutes(q)
-      const card = (r: Route) => {
+      const info = (r: Route) => {
         const p = all[r.id] ?? EMPTY
         const d = countDone(p)
-        const isShown = s.shown.includes(r.id)
-        const isActive = s.active === r.id
-        const open = isOpenFor(passes, r)
-        const pass = passes[r.id]
-        const allDone = d >= r.steps.length
-        const state = !open ? 'BLOQUEADA' : pass ? 'APROBADA' : isActive ? 'EN CURSO' : isShown ? 'EN EL PANEL' : ''
+        return { d, isShown: s.shown.includes(r.id), isActive: s.active === r.id, open: isOpenFor(passes, r), pass: passes[r.id], allDone: d >= r.steps.length }
+      }
+      // Acciones de una ruta o nivel: seguir, sumar/quitar del panel, examen, certificado.
+      const actions = (r: Route) => {
+        const { d, isShown, isActive, open, pass, allDone } = info(r)
+        if (!open) return <Text size="footnote" color="subtle">🔒 Se habilita al aprobar {shortName(routeById(prerequisite(r)!))}.</Text>
         return (
-          <Box key={`route-${r.id}`} flexDirection="column" gap={1} paddingX={2} paddingY={1} borderStyle="round" borderColor={isShown && open ? FOX : 'subtle'} backgroundColor={isShown && open ? TINT : undefined}>
-            <Box flexDirection="row" justifyContent="space-between" alignItems="center">
-              <Text weight="semibold" dimColor={!open}>{r.level ? `${LEVEL_NAMES[r.level]}` : r.name}</Text>
-              {state && <Text size="caption" mono color={pass ? 'success' : open ? FOX : 'subtle'}>{state}</Text>}
+          <Box flexDirection="column" gap={1}>
+            <Box flexDirection="row" gap={1} flexWrap="wrap">
+              {!isActive && <Button key={`go-${r.id}`} label={d ? 'Seguir' : 'Empezar'} variant="primary" onPress={() => void openRoute($, r.id)} />}
+              {r.exam && !pass && allDone && <Button key={`exam-${r.id}`} label="Rendir examen" variant="primary" onPress={() => void startExam($, r.id)} />}
+              {!(isShown && s.shown.length === 1) && (
+                <Button key={`toggle-${r.id}`} label={isShown ? 'Quitar del panel' : 'Sumar al panel'} variant="secondary" onPress={() => void toggleShown($, r.id)} />
+              )}
             </Box>
-            <Text dimColor={!open}>{r.blurb}</Text>
-            <Text size="footnote" color="subtle">{r.pace} · {d}/{r.steps.length} hechas{pass ? ` · examen ${pass.score}/${pass.total}` : ''}</Text>
-            {!open ? (
-              <Text size="footnote" color="subtle">Se habilita al aprobar {routeById(prerequisite(r)!).name}.</Text>
-            ) : (
-              <Box flexDirection="row" gap={1} flexWrap="wrap">
-                {!isActive && <Button key={`go-${r.id}`} label={d ? 'Seguir' : 'Empezar'} variant="primary" onPress={() => void openRoute($, r.id)} />}
-                {!(isShown && s.shown.length === 1) && (
-                  <Button key={`toggle-${r.id}`} label={isShown ? 'Quitar del panel' : 'Sumar al panel'} variant="secondary" onPress={() => void toggleShown($, r.id)} />
-                )}
-                {r.exam && !pass && allDone && <Button key={`exam-${r.id}`} label="Rendir examen" variant="primary" onPress={() => void startExam($, r.id)} />}
+            {pass && certLink(pass.code, `Certificado ${pass.code} · ${pass.score}/${pass.total}`)}
+          </Box>
+        )
+      }
+      const statusOf = (r: Route) => {
+        const { d, isActive, open, pass } = info(r)
+        if (!open) return { text: 'BLOQUEADA', color: 'subtle' }
+        if (pass) return { text: 'APROBADA', color: 'success' }
+        if (isActive) return { text: 'EN CURSO', color: 'claude' }
+        return { text: d ? `${d}/${r.steps.length}` : 'NUEVA', color: 'subtle' }
+      }
+      // Pista con niveles: una tarjeta, fichas N1 · N2 · N3 y el nivel elegido desplegado.
+      const trackCard = (t: string, levels: Route[]) => {
+        const fallback = levels.find(r => info(r).open && !info(r).pass) ?? levels[levels.length - 1]!
+        const sel = levels.find(r => r.id === exp[t]) ?? fallback
+        const anyShown = levels.some(r => s.shown.includes(r.id))
+        const st = statusOf(sel)
+        return (
+          <Box key={`track-${t}`} flexDirection="column" gap={1} paddingX={2} paddingY={1} borderStyle="round" borderColor={anyShown ? FOX : 'subtle'}>
+            <Box flexDirection="row" justifyContent="space-between" alignItems="center">
+              <Text size="heading" weight="semibold">{TRACK_NAMES[t] ?? t}</Text>
+              <Text size="caption" mono color="subtle">{levels.filter(r => info(r).pass).length}/{levels.length} NIVELES</Text>
+            </Box>
+            <Box flexDirection="row" gap={1} flexWrap="wrap">
+              {levels.map(r => {
+                const i = info(r)
+                const label = `${i.pass ? '✓ ' : !i.open ? '🔒 ' : ''}${LEVEL_NAMES[r.level ?? 1]}`
+                return <Button key={`lvl-${r.id}`} label={label} variant={r.id === sel.id ? 'primary' : 'secondary'} onPress={() => void update($, expanded, m => ({ ...m, [t]: r.id }))} />
+              })}
+            </Box>
+            <Box flexDirection="column" gap={1} paddingTop={1}>
+              <Box flexDirection="row" justifyContent="space-between" alignItems="center">
+                <Text weight="semibold" dimColor={!info(sel).open}>{sel.blurb}</Text>
               </Box>
-            )}
-            {pass && certLink(pass.code, `Certificado ${pass.code}`)}
-            {r.exam && !pass && open && !allDone && <Text size="footnote" color="subtle">El examen se habilita al terminar las {r.steps.length} paradas.</Text>}
+              <Text size="footnote" color="subtle">{sel.pace} · <Text color={st.color}>{st.text}</Text></Text>
+              {actions(sel)}
+            </Box>
+          </Box>
+        )
+      }
+      // Ruta suelta: tarjeta compacta.
+      const looseCard = (r: Route) => {
+        const st = statusOf(r)
+        const shown = s.shown.includes(r.id)
+        return (
+          <Box key={`loose-${r.id}`} flexDirection="column" gap={1} paddingX={2} paddingY={1} borderStyle="round" borderColor={shown ? FOX : 'subtle'}>
+            <Box flexDirection="row" justifyContent="space-between" alignItems="center">
+              <Text size="heading" weight="semibold">{r.name}</Text>
+              <Text size="caption" mono color={st.color}>{st.text}</Text>
+            </Box>
+            <Text color="subtle">{r.blurb}</Text>
+            <Text size="footnote" color="subtle">{r.pace}</Text>
+            {actions(r)}
           </Box>
         )
       }
@@ -575,22 +618,11 @@ export const register: Register = on => {
         const inTopic = found.filter(r => r.topic === topic)
         if (!inTopic.length) return null
         const tracks = [...new Set(inTopic.filter(r => r.track).map(r => r.track!))]
-        const loose = inTopic.filter(r => !r.track)
         return (
           <Box key={`topic-${topic}`} flexDirection="column" gap={1}>
-            <Text size="caption" mono color={FOX}>{topic.toUpperCase()}</Text>
-            {tracks.map(t => (
-              <Box key={`track-${t}`} flexDirection="column" gap={1}>
-                <Text size="heading" weight="semibold">{TRACK_NAMES[t] ?? t}</Text>
-                {inTopic.filter(r => r.track === t).sort((a, b) => (a.level ?? 0) - (b.level ?? 0)).map(card)}
-              </Box>
-            ))}
-            {loose.map(r => (
-              <Box key={`loose-${r.id}`} flexDirection="column" gap={1}>
-                <Text size="heading" weight="semibold">{r.name}</Text>
-                {card(r)}
-              </Box>
-            ))}
+            <Text size="caption" mono color="claude">{topic.toUpperCase()}</Text>
+            {tracks.map(t => trackCard(t, ROUTES.filter(r => r.track === t).sort((a, b) => (a.level ?? 0) - (b.level ?? 0))))}
+            {inTopic.filter(r => !r.track).map(looseCard)}
           </Box>
         )
       })
@@ -601,10 +633,10 @@ export const register: Register = on => {
             <Button key="back" label="← Volver" variant="secondary" onPress={() => void update($, view, () => 'paso' as View)} />
           </Box>
           {Input && (
-            <Input key="search" placeholder="Buscar: vue, git, escritura, avanzado…" value={q} submitLabel="Buscar" onInput={val => void update($, query, () => val)} onSubmit={val => void update($, query, () => val)} />
+            <Input key="search" placeholder="Buscar: vue, git, oratoria, avanzado…" value={q} submitLabel="Limpiar" onInput={val => void update($, query, () => val)} onSubmit={() => void update($, query, () => '')} />
           )}
           {found.length === 0 ? <Text color="subtle">No hay rutas que coincidan con «{q}».</Text> : sections}
-          <Text size="footnote" color="subtle">Las rutas técnicas tienen tres niveles. Cada nivel termina con un examen y se aprueba con el {Math.round(PASS_RATIO * 100)} %.</Text>
+          <Text size="footnote" color="subtle">Las rutas con niveles terminan cada nivel con un examen; se aprueba con el {Math.round(PASS_RATIO * 100)} % y habilita el siguiente.</Text>
           {footer}
         </Box>
       )
@@ -652,7 +684,7 @@ export const register: Register = on => {
 
         {!Svg ? (
           <Box flexDirection="column">
-            <Text bold color={FOX}>{route.name} · Parada {cur + 1}</Text>
+            <Text bold color="claude">{route.name} · Parada {cur + 1}</Text>
             <Text color="subtle">{'▮'.repeat(n)}{'▯'.repeat(total - n)} {n}/{total}</Text>
           </Box>
         ) : (
@@ -683,11 +715,6 @@ export const register: Register = on => {
           {paragraphs}
         </Box>
 
-        <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} backgroundColor={TINT} borderStyle="round" borderColor={FOX}>
-          <Text size="caption" mono color={FOX}>PARA LLEVARTE</Text>
-          <Text weight="medium">{take}</Text>
-        </Box>
-
         <Box flexDirection="column" gap={1}>
           <Text size="caption" mono color="subtle">PREGUNTA RÁPIDA</Text>
           <Text weight="semibold">{q}</Text>
@@ -710,6 +737,13 @@ export const register: Register = on => {
             </Box>
           )}
         </Box>
+
+        {picked != null && (
+          <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} backgroundColor={TINT} borderStyle="round" borderColor={FOX}>
+            <Text size="caption" mono color="claude">PARA LLEVARTE</Text>
+            <Text weight="medium">{take}</Text>
+          </Box>
+        )}
 
         <Box flexDirection="row" gap={1} alignItems="center" justifyContent="space-between" flexWrap="wrap">
           <Box flexDirection="row" gap={1} flexWrap="wrap">
