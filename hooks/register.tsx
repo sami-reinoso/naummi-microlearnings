@@ -658,6 +658,19 @@ export const register: Register = (on, options) => {
     )
     const certLink = (code: string, label: string) =>
       Link ? <Link key={`cert-${code}`} href={certUrl(code)} label={label} /> : <Text color="claude">{label}: {certUrl(code)}</Text>
+    // Explorar: una sola vista con dos pestañas, Rutas y Caminos.
+    const exploreHeader = (tab: 'rutas' | 'caminos') => (
+      <Box flexDirection="column" gap={1}>
+        <Box flexDirection="row" justifyContent="space-between" alignItems="center">
+          <Text size="title" weight="bold">Explorar</Text>
+          <Button key="back" label="← Volver" variant="secondary" onPress={() => void update($, view, () => 'paso' as View)} />
+        </Box>
+        <Box flexDirection="row" gap={1}>
+          <Button key="tab-rutas" label="Rutas" hotkey="r" variant={tab === 'rutas' ? 'primary' : 'secondary'} onPress={() => void update($, view, () => 'rutas' as View)} />
+          <Button key="tab-caminos" label="◇ Caminos" hotkey="c" variant={tab === 'caminos' ? 'primary' : 'secondary'} onPress={() => void update($, view, () => 'caminos' as View)} />
+        </Box>
+      </Box>
+    )
 
     await read($, customCount)
     // --- Bienvenida: solo la primera vez
@@ -672,7 +685,7 @@ export const register: Register = (on, options) => {
           <Box flexDirection="row" gap={1} flexWrap="wrap">
             <Button key="w-start" label={`Empezar con ${shortName(routeById(startRoute()))}`} variant="primary" onPress={welcome(() => openRoute($, startRoute()))} />
             <Button key="w-caminos" label="◇ Elegir mi camino" variant="secondary" onPress={welcome(() => update($, view, () => 'caminos' as View))} />
-            <Button key="w-routes" label="⌕ Elegir una ruta" variant="secondary" onPress={welcome(() => update($, view, () => 'rutas' as View))} />
+            <Button key="w-routes" label="Elegir una ruta" variant="secondary" onPress={welcome(() => update($, view, () => 'rutas' as View))} />
           </Box>
           <Text size="footnote" color="subtle">Un camino es un conjunto de rutas armado para un rol, como Frontend con Vue Jr, Ssr o Sr.</Text>
           <Text size="footnote" color="subtle">¿No está el tema que buscás? En Rutas podés crear el tuyo, o escribí /nueva-ruta y el tema.</Text>
@@ -821,10 +834,7 @@ export const register: Register = (on, options) => {
       const minePr = mine ? caminoProgress(mine, all, passes) : null
       return (
         <Box flexDirection="column" gap={2} paddingX={1} paddingY={1}>
-          <Box flexDirection="row" justifyContent="space-between" alignItems="center">
-            <Text size="title" weight="bold">Elegí tu camino</Text>
-            <Button key="back" label="← Volver" variant="secondary" onPress={() => void update($, view, () => 'paso' as View)} />
-          </Box>
+          {exploreHeader('caminos')}
           <Text color="subtle">Conjuntos de rutas armados para un rol y un nivel. Elegí uno y te voy llevando ruta por ruta. Lo que hacés en una ruta cuenta para todos los caminos que la incluyen.</Text>
           {mine && minePr && (
             <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} {...highlight()} borderStyle="round">
@@ -950,20 +960,7 @@ export const register: Register = (on, options) => {
       })
       return (
         <Box flexDirection="column" gap={2} paddingX={1} paddingY={1}>
-          <Box flexDirection="row" justifyContent="space-between" alignItems="center">
-            <Text size="title" weight="bold">Rutas</Text>
-            <Box flexDirection="row" gap={1}>
-              <Button key="to-caminos" label="◇ Caminos" variant="secondary" onPress={() => void update($, view, () => 'caminos' as View)} />
-              <Button key="back" label="← Volver" variant="secondary" onPress={() => void update($, view, () => 'paso' as View)} />
-            </Box>
-          </Box>
-          {!q && !s.path && (
-            <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} {...highlight()} borderStyle="round">
-              <Text weight="semibold">◇ Elegí tu camino</Text>
-              <Text size="footnote" color="subtle">Rutas ya armadas por rol: Frontend con Vue, Backend .NET, Datos, Diseño, Product Manager, Liderazgo… en Jr, Ssr y Sr.</Text>
-              <Button key="caminos-cta" label="Ver caminos" variant="primary" onPress={() => void update($, view, () => 'caminos' as View)} />
-            </Box>
-          )}
+          {exploreHeader('rutas')}
           {Input && (
             <Input key="search" placeholder="Buscar: vue, git, oratoria, avanzado…" value={q} submitLabel="Limpiar" onInput={val => void update($, query, () => val)} onSubmit={() => void update($, query, () => '')} />
           )}
@@ -1029,20 +1026,17 @@ export const register: Register = (on, options) => {
             ))}
             {s.shown.length > VISIBLE && <Button key="tab-next" label="›" variant="secondary" onPress={() => void openRoute($, nextId)} />}
           </Box>
-          <Button key="routes" label="⌕ Rutas" variant="secondary" onPress={() => void update($, view, () => 'rutas' as View)} />
+          <Button key="explore" label="Explorar" hotkey="e" variant="secondary" onPress={() => void update($, view, () => 'rutas' as View)} />
         </Box>
 
         {camino && camPr && (
           <Box flexDirection="row" gap={1} alignItems="center" justifyContent="space-between" flexWrap="wrap">
-            <Text size="footnote" color="subtle">
-              <Text color="claude">◇</Text> {camino.name} · {camPr.next ? `${camPr.done}/${camPr.total} rutas` : '¡camino completo!'}
-            </Text>
-            <Box flexDirection="row" gap={1}>
-              {camPr.next && camPr.next.id !== route.id && !!route.exam && routeComplete(route, p, passes) && (
-                <Button key="cam-next" label={`Seguir: ${shortName(camPr.next)}`} variant="primary" onPress={() => void openRoute($, camPr.next!.id)} />
-              )}
-              <Button key="cam-view" label="Ver camino" variant="secondary" onPress={() => void update($, view, () => 'caminos' as View)} />
-            </Box>
+            <Button key="cam-view" plain dimColor onPress={() => void update($, view, () => 'caminos' as View)}>
+              <Text color="claude">◇</Text> {camino.name} · {camPr.next ? `${camPr.done}/${camPr.total} rutas` : '¡camino completo!'} ›
+            </Button>
+            {camPr.next && camPr.next.id !== route.id && !!route.exam && routeComplete(route, p, passes) && (
+              <Button key="cam-next" label={`Seguir: ${shortName(camPr.next)}`} variant="primary" onPress={() => void openRoute($, camPr.next!.id)} />
+            )}
           </Box>
         )}
 
