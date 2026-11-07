@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { Atom, EngineInterface, Register } from 'claude-code'
 
 import type { Progress, Settings, Sync, View } from '../types'
-import { FOX_ARM, FOX_BODY, NOTEBOOK, NOTEBOOK_RATIO, PAW, PAW_BOX } from './fox-art'
+import { FOX as FOX_IMG, FOX_BOX, PLANT, PLANT_BOX } from './fox-art'
 import { INTER_FACES } from './inter-font'
 import { DEFAULT_ROUTE, ROUTES, routeById } from './routes'
 import type { Route } from './routes'
@@ -224,39 +224,40 @@ function esc(s: string) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-// El zorrito aterciopelado, parado en el piso con su sombra: saluda con la pata
-// (fox-paw-wave, con la misma pausa de 82° y los mismos tiempos) y festeja con un anillo (gp-ring).
-// El cuaderno de campo de Naummi en la mano que no saluda: va sobre el cuerpo
-// y la pata (recortada del mismo sprite) se dibuja encima, así lo sostiene.
-function bookSvg(size: number): string {
-  const w = size * BOOK.w, h = w * NOTEBOOK_RATIO
-  const cx = size * BOOK.x, cy = size * BOOK.y
-  const [px, py, pw, ph] = PAW_BOX.map(v => v * size)
-  return `<image href="${NOTEBOOK}" x="${(cx - w / 2).toFixed(1)}" y="${(cy - h / 2).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" transform="rotate(${BOOK.rot} ${cx.toFixed(1)} ${cy.toFixed(1)})"/>
-<image href="${PAW}" x="${px!.toFixed(1)}" y="${py!.toFixed(1)}" width="${pw!.toFixed(1)}" height="${ph!.toFixed(1)}"/>`
+// El zorrito de Naummi abrazando su libro, con su plantita al lado, parados en el piso.
+// Coordenadas: píxeles de la ilustración original, escalados a la cabecera.
+const SCENE = { k: 0.2712, x: 209, y: 8, ox: FOX_BOX[0]!, oy: FOX_BOX[1]! }
+const at = (px: number, py: number): [number, number] => [SCENE.x + (px - SCENE.ox) * SCENE.k, SCENE.y + (py - SCENE.oy) * SCENE.k]
+const box = (b: number[]) => {
+  const [x, y] = at(b[0]!, b[1]!)
+  return { x, y, w: (b[2]! - b[0]!) * SCENE.k, h: (b[3]! - b[1]!) * SCENE.k }
 }
-const BOOK = { x: 0.275, y: 0.745, w: 0.24, rot: -12 }
 
-function foxSvg(x: number, y: number, size: number, cheer: boolean): string {
-  const ox = (0.08 + 0.66) * size, oy = 0.53 * size
-  const rot = (deg: number) => `${deg} ${ox.toFixed(1)} ${oy.toFixed(1)}`
-  const wave = [82, -12, 18, -12, 18, -12, 18, 0, 82].map(rot).join(';')
-  const ring = cheer
-    ? `<circle cx="${size / 2}" cy="${size * 0.42}" r="${size * 0.3}" fill="none" stroke="${MINT}" stroke-width="2.5" opacity="0">
-  <animate attributeName="r" values="${size * 0.27};${size * 0.44}" dur="1.1s" begin="0.1s" repeatCount="3"/>
-  <animate attributeName="opacity" values="0.8;0" dur="1.1s" begin="0.1s" repeatCount="3"/>
-</circle>`
+function foxScene(cheer: boolean): string {
+  const fox = box(FOX_BOX), plant = box(PLANT_BOX)
+  const [fx, fy] = at(700, 604) // entre las patas
+  const [px, py] = at(890, 621) // base de la maceta
+  const [hx, hy] = at(655, 200) // cabeza
+  const sparks = cheer
+    ? [[-34, -18], [30, -26], [-40, 12], [38, 8], [0, -44]]
+        .map(([dx, dy], i) => `<circle cx="${(hx + dx!).toFixed(1)}" cy="${(hy + dy!).toFixed(1)}" r="2" fill="${i % 2 ? MINT : '#f7d76b'}" opacity="0">
+  <animate attributeName="opacity" values="0;1;0" dur="1.2s" begin="${(0.1 + i * 0.12).toFixed(2)}s" repeatCount="3"/>
+  <animate attributeName="r" values="1;3;1" dur="1.2s" begin="${(0.1 + i * 0.12).toFixed(2)}s" repeatCount="3"/>
+</circle>`).join('')
     : ''
-  return `<g transform="translate(${x} ${y})">
+  const f = (n: number) => n.toFixed(1)
+  return `<ellipse cx="${f(fx - 4)}" cy="${f(fy + 1)}" rx="96" ry="10" fill="url(#floor)"/>
+<ellipse cx="${f(fx)}" cy="${f(fy + 0.5)}" rx="33" ry="4.6" fill="#020a12" opacity="0.55"/>
+<ellipse cx="${f(px)}" cy="${f(py + 0.3)}" rx="15" ry="3.2" fill="#020a12" opacity="0.5"/>
+<g transform="translate(${f(fx)} ${f(fy)})"><g>
+  <animateTransform attributeName="transform" type="scale" values="1 1;1.006 1.014;1 1" keyTimes="0;0.5;1" dur="3.8s" repeatCount="indefinite" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1"/>
+  <image href="${FOX_IMG}" x="${f(fox.x - fx)}" y="${f(fox.y - fy)}" width="${f(fox.w)}" height="${f(fox.h)}"/>
+</g></g>
 <g>
-  ${ring}
-  <image href="${FOX_ARM}" x="${0.08 * size}" y="0" width="${size}" height="${size}" transform="rotate(${rot(82)})">
-    <animateTransform attributeName="transform" type="rotate" values="${wave}" keyTimes="0;0.15;0.27;0.42;0.54;0.66;0.78;0.88;1" dur="3.5s" begin="0.35s" fill="freeze"/>
-  </image>
-  <image href="${FOX_BODY}" x="0" y="0" width="${size}" height="${size}"/>
-  ${bookSvg(size)}
+  <animateTransform attributeName="transform" type="rotate" values="-2.2 ${f(px)} ${f(py)};2.2 ${f(px)} ${f(py)};-2.2 ${f(px)} ${f(py)}" dur="4.4s" repeatCount="indefinite" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1"/>
+  <image href="${PLANT}" x="${f(plant.x)}" y="${f(plant.y)}" width="${f(plant.w)}" height="${f(plant.h)}"/>
 </g>
-</g>`
+${sparks}`
 }
 
 function heroSvg(route: Route, p: Progress, cheer = false): string {
@@ -291,9 +292,7 @@ function heroSvg(route: Route, p: Progress, cheer = false): string {
 </defs>
 <rect width="${W}" height="${H}" rx="18" fill="url(#bg)"/>
 <circle cx="${W - 82}" cy="78" r="78" fill="url(#glow)"/>
-<ellipse cx="${W - 86}" cy="156" rx="78" ry="9" fill="url(#floor)"/>
-<ellipse cx="${W - 86}" cy="155.5" rx="40" ry="5.5" fill="#020a12" opacity="0.55"/>
-${foxSvg(W - 168, 4, 156, cheer)}
+${foxScene(cheer)}
 <text x="20" y="34" ${mono} font-size="10" letter-spacing="1.6" fill="${MINT}">${esc(route.name.toUpperCase())}</text>
 <text x="20" y="70" ${sans} font-size="26" font-weight="700" letter-spacing="-0.5" fill="#ffffff">${esc(headline)}</text>
 <text x="20" y="94" ${sans} font-size="13" fill="rgba(255,255,255,0.72)">${n} de ${total} hechas · ${pct}%</text>

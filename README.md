@@ -55,5 +55,5 @@ Las rutas se declaran en `hooks/routes.ts`. Los pasos de Variado están en `hook
 
 ## Créditos
 
-- Zorrito aterciopelado y cuaderno de campo: ilustraciones de Naummi.
+- Zorrito con su libro y su plantita: ilustración de Naummi.
 - Tipografía de la cabecera: [Inter](https://rsms.me/inter/) de Rasmus Andersson, con licencia SIL Open Font License 1.1, incrustada y reducida a los caracteres que usa la cabecera.
