@@ -1,16 +1,19 @@
 import { atom, read, update } from 'claude-code'
 import type { Atom, EngineInterface, Register } from 'claude-code'
 
-import type { Progress, Settings, Sync, View } from '../types'
+import type { Exam, Pass, Progress, Settings, Sync, View } from '../types'
 import { FOX as FOX_IMG, FOX_BOX, PLANT, PLANT_BOX } from './fox-art'
 import { INTER_FACES } from './inter-font'
-import { DEFAULT_ROUTE, ROUTES, routeById } from './routes'
+import { DEFAULT_ROUTE, LEVEL_NAMES, ROUTES, TOPICS, TRACK_NAMES, prerequisite, routeById, searchRoutes } from './routes'
 import type { Route } from './routes'
 
 // La página publicada guarda el progreso en tu espacio privado de esta base.
 const ARTIFACT = 'https://claude.ai/artifact/SYzMTGDceMDtrVZ9EkygWS'
 const COLLECTION = 'data/users/me'
 const SETTINGS_DOC = 'microdosis-ajustes'
+// Certificados: colección compartida de la página, legible para quien verifique un código.
+const CERTS = 'certificados'
+const PASS_RATIO = 0.75
 const PANE = 'microdosis'
 
 // La ruta variada usa el mismo documento que la página publicada.
@@ -23,6 +26,9 @@ const byRoute = atom({ plugin: 'microdosis', key: 'byRoute' } as const, {} as Re
 const settings = atom({ plugin: 'microdosis', key: 'prefs' } as const, START) as unknown as Atom<Settings>
 const sync = atom({ plugin: 'microdosis', key: 'sync' } as const, 'cargando' as Sync)
 const view = atom({ plugin: 'microdosis', key: 'view' } as const, 'paso' as View)
+const query = atom({ plugin: 'microdosis', key: 'query' } as const, '')
+const tabStart = atom({ plugin: 'microdosis', key: 'tabStart' } as const, 0)
+const exam = atom({ plugin: 'microdosis', key: 'exam' } as const, null as Exam | null) as unknown as Atom<Exam | null>
 
 // Paleta: azul noche de fondo con acento durazno, en eco del naranja del zorrito.
 const NIGHT = '#0f2a3d'
@@ -32,10 +38,6 @@ const MINT = '#FFD4C2'
 const TINT = 'rgba(244, 153, 122, 0.12)'
 // Tipografía de la cabecera: Inter, incrustada en el SVG (ver inter-font.ts).
 const DISPLAY_FONT = "'Inter Microdosis','Inter',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif"
-
-// Silueta del zorrito de Naummi, trazada sobre el logo (lienzo 1024).
-const FOX_PATH =
-  'M350 88 C385 84 452 138 490 186 L570 186 C608 138 668 88 705 87 C738 95 748 205 738 305 C755 330 782 360 776 386 C768 410 726 432 694 453 C700 530 700 600 662 660 C656 700 655 750 660 795 C700 788 728 762 748 763 C770 768 768 815 735 852 C682 912 590 950 470 953 C300 956 182 880 178 742 C176 625 258 540 366 458 C330 440 290 412 285 386 C290 360 312 335 324 308 C310 222 318 108 350 88 Z'
 
 const versions: Record<string, number> = {}
 let chain: Promise<unknown> = Promise.resolve()
@@ -69,7 +71,15 @@ function cleanSettings(raw: unknown): Settings | null {
   const known = new Set(ROUTES.map(x => x.id))
   const shown = Array.isArray(r.shown) ? r.shown.filter((x): x is string => typeof x === 'string' && known.has(x)) : []
   const active = typeof r.active === 'string' && known.has(r.active) ? r.active : DEFAULT_ROUTE
-  return { active, shown: shown.length ? shown : [active], at: typeof r.at === 'number' ? r.at : 0 }
+  const obj = (v: unknown) => (v && typeof v === 'object' ? v : {})
+  return {
+    active,
+    shown: shown.length ? shown : [active],
+    at: typeof r.at === 'number' ? r.at : 0,
+    passes: obj(r.passes) as Record<string, Pass>,
+    attempts: obj(r.attempts) as Record<string, number>,
+    certName: typeof r.certName === 'string' ? r.certName : '',
+  }
 }
 
 async function progressOf($: EngineInterface, routeId: string): Promise<Progress> {
@@ -155,8 +165,11 @@ async function load($: EngineInterface) {
     }
     const remoteSettings = cleanSettings(rows[SETTINGS_DOC])
     const mineSettings = await read($, settings)
-    if (remoteSettings && remoteSettings.at > mineSettings.at) await update($, settings, () => remoteSettings)
+    // Los exámenes aprobados nunca se pierden al unir: se suman los de ambos lados.
+    const passes = { ...(remoteSettings?.passes ?? {}), ...(mineSettings.passes ?? {}) }
+    if (remoteSettings && remoteSettings.at > mineSettings.at) await update($, settings, () => ({ ...remoteSettings, passes }))
     else if (mineSettings.at > (remoteSettings?.at ?? -1)) toPush.push('ajustes')
+    if (Object.keys(passes).length !== Object.keys(mineSettings.passes ?? {}).length) await update($, settings, s => ({ ...s, passes }))
     await update($, sync, () => 'nube' as Sync)
     await showStatus($)
     for (const id of toPush) void save($, id)
@@ -205,18 +218,100 @@ async function setSettings($: EngineInterface, fn: (s: Settings) => Settings) {
   void save($, 'ajustes')
 }
 
-const openRoute = ($: EngineInterface, id: string) =>
-  setSettings($, s => ({ ...s, active: id, shown: s.shown.includes(id) ? s.shown : [...s.shown, id] })).then(() =>
-    update($, view, () => 'paso' as View),
-  )
+const isOpenFor = (passes: Record<string, Pass>, r: Route) => {
+  const pre = prerequisite(r)
+  return !pre || !!passes[pre]
+}
+
+const openRoute = async ($: EngineInterface, id: string) => {
+  const s = await read($, settings)
+  const r = routeById(id)
+  if (!isOpenFor(s.passes ?? {}, r)) {
+    $.ui.toast(`Se habilita al aprobar ${routeById(prerequisite(r)!).name}`)
+    return
+  }
+  await setSettings($, st => ({ ...st, active: id, shown: st.shown.includes(id) ? st.shown : [...st.shown, id] }))
+  await update($, view, () => 'paso' as View)
+}
 
 const toggleShown = ($: EngineInterface, id: string) =>
   setSettings($, s => {
     if (!s.shown.includes(id)) return { ...s, shown: [...s.shown, id] }
     if (s.shown.length === 1) return s
     const shown = s.shown.filter(x => x !== id)
-    return { ...s, shown, active: s.active === id ? shown[0] : s.active }
+    return { ...s, shown, active: s.active === id ? shown[0]! : s.active }
   })
+
+// --- Examen de nivel y certificado
+
+function shuffle<T>(a: T[]): T[] {
+  const b = [...a]
+  for (let i = b.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[b[i], b[j]] = [b[j]!, b[i]!]
+  }
+  return b
+}
+
+async function startExam($: EngineInterface, routeId: string) {
+  const r = routeById(routeId)
+  if (!r.exam) return
+  await update($, exam, () => ({ routeId, order: shuffle(r.exam!.map((_, i) => i)), answers: [] }))
+  await update($, view, () => 'examen' as View)
+}
+
+async function answerExam($: EngineInterface, choice: number) {
+  const ex = await read($, exam)
+  if (!ex || ex.result) return
+  const answers = [...ex.answers, choice]
+  if (answers.length < ex.order.length) {
+    await update($, exam, () => ({ ...ex, answers }))
+    return
+  }
+  const r = routeById(ex.routeId)
+  const score = ex.order.reduce((acc, q, k) => acc + (r.exam![q]![2] === answers[k] ? 1 : 0), 0)
+  const total = ex.order.length
+  const passed = score / total >= PASS_RATIO
+  await update($, settings, s => ({ ...s, attempts: { ...(s.attempts ?? {}), [r.id]: (s.attempts?.[r.id] ?? 0) + 1 }, at: Date.now() }))
+  await update($, exam, () => ({ ...ex, answers, result: { score, total, passed } }))
+  void save($, 'ajustes')
+}
+
+function makeCode(): string {
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const b = new Uint8Array(8)
+  crypto.getRandomValues(b)
+  return 'MD-' + Array.from(b, x => A[x % A.length]).join('')
+}
+
+// Emite el certificado: queda en tus ajustes y en la colección pública de la página, con su código.
+async function issueCert($: EngineInterface, rawName: string) {
+  const ex = await read($, exam)
+  if (!ex?.result?.passed || ex.result.code) return
+  const name = rawName.trim()
+  if (!name) {
+    $.ui.toast('Escribí el nombre que va en el certificado')
+    return
+  }
+  const r = routeById(ex.routeId)
+  const s = await read($, settings)
+  const code = makeCode()
+  const at = Date.now()
+  const attempts = s.attempts?.[r.id] ?? 1
+  const pass: Pass = { score: ex.result.score, total: ex.result.total, at, code, attempts }
+  await update($, settings, st => ({ ...st, certName: name, passes: { ...(st.passes ?? {}), [r.id]: pass }, at: Date.now() }))
+  await update($, exam, e => (e && e.result ? { ...e, result: { ...e.result, code } } : e))
+  void save($, 'ajustes')
+  const r2 = await $.tool.call({
+    tool: 'ArtifactData', action: 'set', url: ARTIFACT, collection: CERTS, doc_id: code,
+    data: {
+      code, name, routeId: r.id, route: r.name, track: r.track ?? '', level: r.level ?? 0,
+      score: pass.score, total: pass.total, pct: Math.round((pass.score / pass.total) * 100),
+      attempts, issuedAt: new Date(at).toISOString(), issuer: 'Microdosis · Naummi', version: 1,
+    },
+  }).catch(() => null)
+  if (!r2 || r2.isError || r2.deny) $.ui.toast('El certificado quedó en tus ajustes, pero no se pudo registrar en claude.ai. Probá de nuevo más tarde.')
+}
 
 // --- Cabecera: tarjeta azul noche con el zorrito, el avance y el recorrido por tramos.
 
@@ -269,19 +364,19 @@ function heroSvg(route: Route, p: Progress, cheer = false): string {
   const sans = `font-family="${DISPLAY_FONT}"`
   const mono = 'font-family="ui-monospace,SFMono-Regular,Menlo,monospace"'
 
-  // Una marca por parada, agrupadas por tramo con aire entre grupos.
+  // La barra se llena de izquierda a derecha con las paradas hechas; un punto marca dónde estás.
   const x0 = 20, y = 170, groupGap = 7
   const gaps = route.legs.length - 1
   const tickW = (W - 2 * x0 - groupGap * gaps) / total
   const ticks: string[] = []
+  let curX = x0
   route.steps.forEach((s, i) => {
     const x = x0 + i * tickW + s[0] * groupGap
-    const isCur = i === p.cur
-    const fill = p.done[i] ? FOX : isCur ? '#ffffff' : 'rgba(255,255,255,0.16)'
-    const h = isCur ? 12 : 8
     const pad = Math.min(0.8, tickW * 0.12)
-    ticks.push(`<rect x="${(x + pad).toFixed(1)}" y="${y - h / 2}" width="${(tickW - 2 * pad).toFixed(1)}" height="${h}" rx="1.6" fill="${fill}"/>`)
+    if (i === p.cur) curX = x + tickW / 2
+    ticks.push(`<rect x="${(x + pad).toFixed(1)}" y="${y - 4}" width="${(tickW - 2 * pad).toFixed(1)}" height="8" rx="1.6" fill="${i < n ? FOX : 'rgba(255,255,255,0.16)'}"/>`)
   })
+  ticks.push(`<circle cx="${curX.toFixed(1)}" cy="${y - 10}" r="2.4" fill="#ffffff"/>`)
 
   const headline = n === total ? '¡Ruta completa!' : `Parada ${p.cur + 1}`
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
@@ -345,9 +440,15 @@ export const register: Register = on => {
     const els = $.ui.resolve(e)
     const { Box, Text, Button } = els
     const Svg = 'Svg' in els ? els.Svg : null
+    const Input = 'Input' in els ? els.Input : null
+    const Code = 'Code' in els ? els.Code : null
+    const Link = 'Link' in els ? els.Link : null
     const s = await read($, settings)
     const all = await read($, byRoute)
     const sy = await read($, sync)
+    const v = await read($, view)
+    const passes = s.passes ?? {}
+    const certUrl = (code: string) => `${ARTIFACT}#cert-${code}`
     const syncText =
       sy === 'nube' ? 'Sincronizado con claude.ai' : sy === 'local' ? 'Guardado en esta compu' : 'Conectando con claude.ai…'
     const footer = (
@@ -355,63 +456,194 @@ export const register: Register = on => {
         <Text color={sy === 'nube' ? 'success' : 'subtle'}>●</Text> {syncText} · /ok marca y avanza
       </Text>
     )
+    const certLink = (code: string, label: string) =>
+      Link ? <Link key={`cert-${code}`} href={certUrl(code)} label={label} /> : <Text color={FOX}>{label}: {certUrl(code)}</Text>
 
-    // Sección Rutas: elegir qué microlearnings se muestran.
-    if ((await read($, view)) === 'rutas') {
+    // --- Examen
+    const ex = await read($, exam)
+    if (v === 'examen' && ex) {
+      const r = routeById(ex.routeId)
+      const total = ex.order.length
+      const need = Math.ceil(total * PASS_RATIO)
+      const header = (
+        <Box flexDirection="row" justifyContent="space-between" alignItems="center">
+          <Text size="caption" mono color={FOX}>EXAMEN · {r.name.toUpperCase()}</Text>
+          <Button key="exit" label="Salir" variant="secondary" onPress={() => void update($, exam, () => null).then(() => update($, view, () => 'rutas' as View))} />
+        </Box>
+      )
+      if (!ex.result) {
+        const k = ex.answers.length
+        const [q, opts] = r.exam![ex.order[k]!]!
+        return (
+          <Box flexDirection="column" gap={2} paddingX={1} paddingY={1}>
+            {header}
+            <Text size="footnote" color="subtle">Pregunta {k + 1} de {total} · aprobás con {need} de {total}</Text>
+            <Text size="title" weight="bold">{q}</Text>
+            <Box flexDirection="column" gap={1}>
+              {opts.map((o, i) => (
+                <Button key={`ex-${k}-${i}`} label={o} hotkey={String(i + 1)} variant="secondary" onPress={() => void answerExam($, i)} />
+              ))}
+            </Box>
+            <Text size="footnote" color="subtle">Las respuestas se corrigen al final. Las preguntas no son las mismas de las paradas.</Text>
+          </Box>
+        )
+      }
+      const { score, passed, code } = ex.result
+      const missed = ex.order.filter((q, i) => r.exam![q]![2] !== ex.answers[i]).map(q => r.exam![q]![0])
+      const next = ROUTES.find(x => x.track && x.track === r.track && x.level === (r.level ?? 0) + 1)
+      return (
+        <Box flexDirection="column" gap={2} paddingX={1} paddingY={1}>
+          {header}
+          <Text size="title" weight="bold">{passed ? '¡Aprobado!' : 'Todavía no'}</Text>
+          <Text>{score} de {total} correctas · {Math.round((score / total) * 100)} %{passed ? '' : ` · necesitás ${need}`}</Text>
+          {missed.length > 0 && (
+            <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} borderStyle="round" borderColor="subtle">
+              <Text size="caption" mono color="subtle">PARA REPASAR</Text>
+              {missed.map(m => <Text>· {m}</Text>)}
+            </Box>
+          )}
+          {passed && !code && (
+            <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} backgroundColor={TINT} borderStyle="round" borderColor={FOX}>
+              <Text size="caption" mono color={FOX}>CERTIFICADO</Text>
+              <Text>Escribí tu nombre como querés que figure. Se registra con fecha, puntaje y un código de verificación.</Text>
+              {Input ? (
+                <Input key="cert-name" label="Nombre completo" value={s.certName ?? ''} submitLabel="Emitir certificado" onSubmit={value => void issueCert($, value)} />
+              ) : (
+                <Button key="cert-go" label="Emitir certificado" variant="primary" onPress={() => void issueCert($, s.certName || 'Sin nombre')} />
+              )}
+            </Box>
+          )}
+          {passed && code && (
+            <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} backgroundColor={TINT} borderStyle="round" borderColor={FOX}>
+              <Text size="caption" mono color={FOX}>CERTIFICADO EMITIDO</Text>
+              <Text weight="semibold">{code}</Text>
+              {certLink(code, 'Ver y compartir el certificado')}
+              {next && <Text size="footnote" color="subtle">Se habilitó {next.name}.</Text>}
+            </Box>
+          )}
+          <Box flexDirection="row" gap={1} flexWrap="wrap">
+            {!passed && <Button key="retry" label="Reintentar" variant="primary" onPress={() => void startExam($, r.id)} />}
+            {!passed && <Button key="review" label="Volver a las paradas" variant="secondary" onPress={() => void update($, exam, () => null).then(() => openRoute($, r.id))} />}
+            {passed && next && <Button key="next-level" label={`Empezar ${LEVEL_NAMES[next.level ?? 1]}`} variant="primary" onPress={() => void update($, exam, () => null).then(() => openRoute($, next.id))} />}
+            {passed && <Button key="to-routes" label="Ir a Rutas" variant="secondary" onPress={() => void update($, exam, () => null).then(() => update($, view, () => 'rutas' as View))} />}
+          </Box>
+        </Box>
+      )
+    }
+
+    // --- Rutas: buscador, temas y niveles
+    if (v === 'rutas') {
+      const q = await read($, query)
+      const found = searchRoutes(q)
+      const card = (r: Route) => {
+        const p = all[r.id] ?? EMPTY
+        const d = countDone(p)
+        const isShown = s.shown.includes(r.id)
+        const isActive = s.active === r.id
+        const open = isOpenFor(passes, r)
+        const pass = passes[r.id]
+        const allDone = d >= r.steps.length
+        const state = !open ? 'BLOQUEADA' : pass ? 'APROBADA' : isActive ? 'EN CURSO' : isShown ? 'EN EL PANEL' : ''
+        return (
+          <Box key={`route-${r.id}`} flexDirection="column" gap={1} paddingX={2} paddingY={1} borderStyle="round" borderColor={isShown && open ? FOX : 'subtle'} backgroundColor={isShown && open ? TINT : undefined}>
+            <Box flexDirection="row" justifyContent="space-between" alignItems="center">
+              <Text weight="semibold" dimColor={!open}>{r.level ? `${LEVEL_NAMES[r.level]}` : r.name}</Text>
+              {state && <Text size="caption" mono color={pass ? 'success' : open ? FOX : 'subtle'}>{state}</Text>}
+            </Box>
+            <Text dimColor={!open}>{r.blurb}</Text>
+            <Text size="footnote" color="subtle">{r.pace} · {d}/{r.steps.length} hechas{pass ? ` · examen ${pass.score}/${pass.total}` : ''}</Text>
+            {!open ? (
+              <Text size="footnote" color="subtle">Se habilita al aprobar {routeById(prerequisite(r)!).name}.</Text>
+            ) : (
+              <Box flexDirection="row" gap={1} flexWrap="wrap">
+                {!isActive && <Button key={`go-${r.id}`} label={d ? 'Seguir' : 'Empezar'} variant="primary" onPress={() => void openRoute($, r.id)} />}
+                {!(isShown && s.shown.length === 1) && (
+                  <Button key={`toggle-${r.id}`} label={isShown ? 'Quitar del panel' : 'Sumar al panel'} variant="secondary" onPress={() => void toggleShown($, r.id)} />
+                )}
+                {r.exam && !pass && allDone && <Button key={`exam-${r.id}`} label="Rendir examen" variant="primary" onPress={() => void startExam($, r.id)} />}
+              </Box>
+            )}
+            {pass && certLink(pass.code, `Certificado ${pass.code}`)}
+            {r.exam && !pass && open && !allDone && <Text size="footnote" color="subtle">El examen se habilita al terminar las {r.steps.length} paradas.</Text>}
+          </Box>
+        )
+      }
+      const sections = TOPICS.map(topic => {
+        const inTopic = found.filter(r => r.topic === topic)
+        if (!inTopic.length) return null
+        const tracks = [...new Set(inTopic.filter(r => r.track).map(r => r.track!))]
+        const loose = inTopic.filter(r => !r.track)
+        return (
+          <Box key={`topic-${topic}`} flexDirection="column" gap={1}>
+            <Text size="caption" mono color={FOX}>{topic.toUpperCase()}</Text>
+            {tracks.map(t => (
+              <Box key={`track-${t}`} flexDirection="column" gap={1}>
+                <Text size="heading" weight="semibold">{TRACK_NAMES[t] ?? t}</Text>
+                {inTopic.filter(r => r.track === t).sort((a, b) => (a.level ?? 0) - (b.level ?? 0)).map(card)}
+              </Box>
+            ))}
+            {loose.map(r => (
+              <Box key={`loose-${r.id}`} flexDirection="column" gap={1}>
+                <Text size="heading" weight="semibold">{r.name}</Text>
+                {card(r)}
+              </Box>
+            ))}
+          </Box>
+        )
+      })
       return (
         <Box flexDirection="column" gap={2} paddingX={1} paddingY={1}>
           <Box flexDirection="row" justifyContent="space-between" alignItems="center">
             <Text size="title" weight="bold">Rutas</Text>
             <Button key="back" label="← Volver" variant="secondary" onPress={() => void update($, view, () => 'paso' as View)} />
           </Box>
-          <Text color="subtle">Elegí qué rutas aparecen en el panel. Cada una guarda su propio progreso.</Text>
-          {ROUTES.map(r => {
-            const p = all[r.id] ?? EMPTY
-            const isShown = s.shown.includes(r.id)
-            const isActive = s.active === r.id
-            const d = countDone(p)
-            return (
-              <Box key={`route-${r.id}`} flexDirection="column" gap={1} paddingX={2} paddingY={1} borderStyle="round" borderColor={isShown ? FOX : 'subtle'} backgroundColor={isShown ? TINT : undefined}>
-                <Box flexDirection="row" justifyContent="space-between" alignItems="center">
-                  <Text size="heading" weight="semibold">{r.name}</Text>
-                  <Text size="caption" mono color={isShown ? FOX : 'subtle'}>{isActive ? 'EN CURSO' : isShown ? 'EN EL PANEL' : 'OCULTA'}</Text>
-                </Box>
-                <Text>{r.blurb}</Text>
-                <Text size="footnote" color="subtle">{r.pace} · {d}/{r.steps.length} hechas</Text>
-                <Box flexDirection="row" gap={1} flexWrap="wrap">
-                  {!isActive && (
-                    <Button key={`go-${r.id}`} label={d ? 'Seguir esta ruta' : 'Empezar esta ruta'} variant="primary" onPress={() => void openRoute($, r.id)} />
-                  )}
-                  {!(isShown && s.shown.length === 1) && (
-                    <Button key={`toggle-${r.id}`} label={isShown ? 'Quitar del panel' : 'Mostrar en el panel'} variant="secondary" onPress={() => void toggleShown($, r.id)} />
-                  )}
-                </Box>
-              </Box>
-            )
-          })}
+          {Input && (
+            <Input key="search" placeholder="Buscar: vue, git, escritura, avanzado…" value={q} submitLabel="Buscar" onInput={val => void update($, query, () => val)} onSubmit={val => void update($, query, () => val)} />
+          )}
+          {found.length === 0 ? <Text color="subtle">No hay rutas que coincidan con «{q}».</Text> : sections}
+          <Text size="footnote" color="subtle">Las rutas técnicas tienen tres niveles. Cada nivel termina con un examen y se aprueba con el {Math.round(PASS_RATIO * 100)} %.</Text>
           {footer}
         </Box>
       )
     }
 
-    // Vista del paso.
+    // --- Vista del paso
     const route = routeById(s.active)
     const total = route.steps.length
     const p = all[route.id] ?? EMPTY
     const cur = Math.min(p.cur, total - 1)
-    const [, title, body, take, q, opts, right] = route.steps[cur]
+    const [, title, body, take, q, opts, right] = route.steps[cur]!
     const picked = p.ans[cur]
     const n = countDone(p)
+    const pass = passes[route.id]
+
+    // Pestañas en una sola línea: dos visibles y flechas para recorrer el resto.
+    const VISIBLE = 2
+    const maxStart = Math.max(0, s.shown.length - VISIBLE)
+    const start = Math.min(await read($, tabStart), maxStart)
+    const tabs = s.shown.slice(start, start + VISIBLE)
+
+    const paragraphs = body.split('\n\n').map((par, i) => {
+      if (par.startsWith('```')) {
+        const lines = par.split('\n')
+        const language = lines[0]!.slice(3).trim() || undefined
+        const source = lines.slice(1, lines[lines.length - 1]!.startsWith('```') ? -1 : undefined).join('\n')
+        return Code ? <Code key={`code-${cur}-${i}`} source={source} language={language} /> : <Text mono>{source}</Text>
+      }
+      return <Text>{par}</Text>
+    })
 
     return (
       <Box flexDirection="column" gap={2} paddingX={1} paddingY={1}>
-        <Box flexDirection="row" gap={1} flexWrap="wrap" alignItems="center">
-          {s.shown.length > 1 &&
-            s.shown.map(id => (
-              <Button key={`tab-${id}`} label={routeById(id).name} variant={id === route.id ? 'primary' : 'secondary'} onPress={() => void openRoute($, id)} />
-            ))}
-          <Button key="routes" label={s.shown.length > 1 ? 'Rutas' : 'Elegir rutas'} variant="secondary" onPress={() => void update($, view, () => 'rutas' as View)} />
+        <Box flexDirection="row" gap={1} alignItems="center">
+          {s.shown.length > VISIBLE && <Button key="tab-prev" label="‹" variant="secondary" onPress={() => void update($, tabStart, t => Math.max(0, Math.min(t, maxStart) - 1))} />}
+          {tabs.map(id => (
+            <Button key={`tab-${id}`} label={routeById(id).name} variant={id === route.id ? 'primary' : 'secondary'} onPress={() => void openRoute($, id)} />
+          ))}
+          {s.shown.length > VISIBLE && <Button key="tab-next" label="›" variant="secondary" onPress={() => void update($, tabStart, t => Math.min(maxStart, t + 1))} />}
+          <Button key="routes" label="Rutas" variant="secondary" onPress={() => void update($, view, () => 'rutas' as View)} />
         </Box>
+        {s.shown.length > VISIBLE && <Text size="footnote" color="subtle">{start + 1}–{Math.min(start + VISIBLE, s.shown.length)} de {s.shown.length} rutas</Text>}
 
         {!Svg ? (
           <Box flexDirection="column">
@@ -422,9 +654,22 @@ export const register: Register = on => {
           <Svg source={heroSvg(route, { ...p, cur }, picked === right)} alt={`${route.name}: parada ${cur + 1}, ${n} de ${total} hechas`} />
         )}
 
+        {route.exam && !pass && n >= total && (
+          <Box flexDirection="row" gap={1} alignItems="center" justifyContent="space-between" paddingX={2} paddingY={1} backgroundColor={TINT} borderStyle="round" borderColor={FOX}>
+            <Text weight="semibold">Terminaste las paradas. Rendí el examen del nivel.</Text>
+            <Button key="exam-now" label="Rendir examen" variant="primary" onPress={() => void startExam($, route.id)} />
+          </Box>
+        )}
+        {pass && (
+          <Box flexDirection="row" gap={1} alignItems="center">
+            <Text size="footnote" color="success">Nivel aprobado {pass.score}/{pass.total} ·</Text>
+            {certLink(pass.code, `certificado ${pass.code}`)}
+          </Box>
+        )}
+
         <Box flexDirection="column" gap={1}>
           <Text size="title" weight="bold">{title}</Text>
-          {body.split('\n\n').map(par => <Text>{par}</Text>)}
+          {paragraphs}
         </Box>
 
         <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} backgroundColor={TINT} borderStyle="round" borderColor={FOX}>

@@ -20,30 +20,24 @@ Cada vez que empezás una sesión de Claude Code, el panel se abre solo al costa
 
 ## Rutas
 
-Tocá **Elegir rutas** en el panel para decidir qué microlearnings se muestran. Por defecto aparece solo **Variado**. Cada ruta guarda su propio progreso, y las que agregues se ven como pestañas arriba del panel.
+Tocá **Rutas** en el panel para buscar y elegir qué microlearnings ver. El buscador filtra por nombre, tema, nivel y palabras clave. Las rutas se agrupan por tema, y las que sumás al panel aparecen como pestañas en una línea: se ven dos y las flechas ‹ › recorren el resto.
 
-| Ruta | Paradas | Largo |
+| Tema | Ruta | Niveles |
 | --- | --- | --- |
-| Variado | 48 | 1 min, temas al azar |
-| Astrología: el mapa | 8 | 3 min, de dónde viene, zodíaco, casas, aspectos y qué dice la ciencia |
-| Producto | 8 | 3 min, entender problemas, validar barato y retener |
-| Escribir claro | 8 | 3 min, hábitos para que un texto se entienda a la primera |
+| Tecnología | Vue 3 | Fundamentos · Intermedio · Avanzado |
+| Tecnología | C# y .NET | Fundamentos · Intermedio · Avanzado (ASP.NET Core) |
+| Tecnología | TypeScript | Fundamentos · Intermedio · Avanzado |
+| Tecnología | Git | Fundamentos · Intermedio · Avanzado |
+| Producto y diseño | Producto | 8 paradas |
+| Escritura | Escribir claro | 8 paradas |
+| Cultura general | Variado | 48 paradas |
+| Astrología | Astrología: el mapa | 8 paradas |
 
-## Instalar
+## Exámenes y certificados
 
-En una sesión de Claude Code, escribí en el prompt:
+Cada nivel de las rutas técnicas termina con un examen de 8 preguntas que no son las de las paradas. Se aprueba con el 75 %, y aprobar habilita el nivel siguiente. Al aprobar podés emitir un certificado con tu nombre, la ruta, el puntaje, la fecha, la cantidad de intentos y un código `MD-XXXXXXXX`.
 
-```
-/plugin install microdosis --marketplace sami-reinoso/naummi-microlearnings
-```
-
-Respondé `y` para agregar el marketplace y elegí dónde instalarlo.
-
-Desde una terminal:
-
-```bash
-claude plugin install microdosis --marketplace sami-reinoso/naummi-microlearnings
-```
+El certificado se verifica en la página de Microdosis en claude.ai (`#cert-CÓDIGO`), que lo busca en su registro. Solo la dueña de la página puede escribir en ese registro; quien tenga acceso a la página puede leerlo. La corrección del examen ocurre en tu compu, así que el certificado acredita que el examen se registró con esos datos, no que lo supervisó un tercero.
 
 ## Sincronización con claude.ai
 
