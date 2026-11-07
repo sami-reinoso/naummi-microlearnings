@@ -313,6 +313,9 @@ async function issueCert($: EngineInterface, rawName: string) {
   if (!r2 || r2.isError || r2.deny) $.ui.toast('El certificado quedó en tus ajustes, pero no se pudo registrar en claude.ai. Probá de nuevo más tarde.')
 }
 
+// Nombre corto para las pestañas: «Vue 3 · N1» en vez de «Vue 3 · Fundamentos».
+const shortName = (r: Route) => (r.track && r.level ? `${TRACK_NAMES[r.track] ?? r.name} · N${r.level}` : r.name)
+
 // --- Cabecera: tarjeta azul noche con el zorrito, el avance y el recorrido por tramos.
 
 function esc(s: string) {
@@ -635,13 +638,15 @@ export const register: Register = on => {
 
     return (
       <Box flexDirection="column" gap={2} paddingX={1} paddingY={1}>
-        <Box flexDirection="row" gap={1} alignItems="center">
-          {s.shown.length > VISIBLE && <Button key="tab-prev" label="‹" variant="secondary" onPress={() => void update($, tabStart, t => Math.max(0, Math.min(t, maxStart) - 1))} />}
-          {tabs.map(id => (
-            <Button key={`tab-${id}`} label={routeById(id).name} variant={id === route.id ? 'primary' : 'secondary'} onPress={() => void openRoute($, id)} />
-          ))}
-          {s.shown.length > VISIBLE && <Button key="tab-next" label="›" variant="secondary" onPress={() => void update($, tabStart, t => Math.min(maxStart, t + 1))} />}
-          <Button key="routes" label="Rutas" variant="secondary" onPress={() => void update($, view, () => 'rutas' as View)} />
+        <Box flexDirection="row" gap={1} alignItems="center" justifyContent="space-between">
+          <Box flexDirection="row" gap={1} alignItems="center">
+            {s.shown.length > VISIBLE && <Button key="tab-prev" label="‹" variant="secondary" onPress={() => void update($, tabStart, t => Math.max(0, Math.min(t, maxStart) - 1))} />}
+            {tabs.map(id => (
+              <Button key={`tab-${id}`} label={shortName(routeById(id))} variant={id === route.id ? 'primary' : 'secondary'} onPress={() => void openRoute($, id)} />
+            ))}
+            {s.shown.length > VISIBLE && <Button key="tab-next" label="›" variant="secondary" onPress={() => void update($, tabStart, t => Math.min(maxStart, t + 1))} />}
+          </Box>
+          <Button key="routes" label="⌕ Rutas" variant="secondary" onPress={() => void update($, view, () => 'rutas' as View)} />
         </Box>
         {s.shown.length > VISIBLE && <Text size="footnote" color="subtle">{start + 1}–{Math.min(start + VISIBLE, s.shown.length)} de {s.shown.length} rutas</Text>}
 
@@ -654,10 +659,16 @@ export const register: Register = on => {
           <Svg source={heroSvg(route, { ...p, cur }, picked === right)} alt={`${route.name}: parada ${cur + 1}, ${n} de ${total} hechas`} />
         )}
 
-        {route.exam && !pass && n >= total && (
-          <Box flexDirection="row" gap={1} alignItems="center" justifyContent="space-between" paddingX={2} paddingY={1} backgroundColor={TINT} borderStyle="round" borderColor={FOX}>
-            <Text weight="semibold">Terminaste las paradas. Rendí el examen del nivel.</Text>
-            <Button key="exam-now" label="Rendir examen" variant="primary" onPress={() => void startExam($, route.id)} />
+        {n >= total && !pass && (
+          <Box flexDirection="column" gap={1} paddingX={2} paddingY={1} backgroundColor={TINT} borderStyle="round" borderColor={FOX}>
+            <Text weight="semibold">{route.exam ? '¡Terminaste las paradas! Ahora el examen del nivel.' : '¡Terminaste esta ruta!'}</Text>
+            <Text size="footnote" color="subtle">
+              {route.exam ? `8 preguntas nuevas · aprobás con ${Math.ceil(route.exam.length * PASS_RATIO)} · al aprobar, certificado y siguiente nivel.` : 'Podés repasar cuando quieras o elegir otra ruta.'}
+            </Text>
+            <Box flexDirection="row" gap={1} flexWrap="wrap">
+              {route.exam && <Button key="exam-now" label="Rendir examen" variant="primary" onPress={() => void startExam($, route.id)} />}
+              <Button key="other-route" label="Elegir otra ruta" variant={route.exam ? 'secondary' : 'primary'} onPress={() => void update($, view, () => 'rutas' as View)} />
+            </Box>
           </Box>
         )}
         {pass && (
@@ -701,11 +712,16 @@ export const register: Register = on => {
         </Box>
 
         <Box flexDirection="row" gap={1} alignItems="center" justifyContent="space-between" flexWrap="wrap">
-          <Box flexDirection="row" gap={1}>
-            <Button key="prev" label="← Anterior" variant="secondary" onPress={() => void go($, cur - 1)} />
-            <Button key="rand" label="Al azar" variant="secondary" onPress={() => void random($)} />
+          <Box flexDirection="row" gap={1} flexWrap="wrap">
+            {cur > 0 && <Button key="prev" label="← Anterior" variant="secondary" onPress={() => void go($, cur - 1)} />}
+            {!route.track && <Button key="rand" label="Al azar" variant="secondary" onPress={() => void random($)} />}
           </Box>
-          <Button key="next" label={cur === total - 1 ? 'Terminar' : 'Siguiente →'} variant="primary" onPress={() => void next($)} />
+          <Button
+            key="next"
+            label={cur === total - 1 ? (picked == null ? 'Saltar y terminar' : 'Terminar ruta') : picked == null ? 'Saltar →' : 'Siguiente →'}
+            variant={picked == null ? 'secondary' : 'primary'}
+            onPress={() => void next($)}
+          />
         </Box>
 
         {footer}
