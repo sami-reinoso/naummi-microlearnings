@@ -2,6 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { Atom, EngineInterface, Register } from 'claude-code'
 
 import type { Progress, Settings, Sync, View } from '../types'
+import { FOX_ARM, FOX_BODY } from './fox-art'
 import { DEFAULT_ROUTE, ROUTES, routeById } from './routes'
 import type { Route } from './routes'
 
@@ -220,8 +221,32 @@ function esc(s: string) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-function heroSvg(route: Route, p: Progress): string {
-  const W = 360, H = 168
+// El zorrito aterciopelado, con las animaciones de Naummi: flota (gp-float), saluda con la pata
+// (fox-paw-wave, con la misma pausa de 82° y los mismos tiempos) y festeja con un anillo (gp-ring).
+function foxSvg(x: number, y: number, size: number, cheer: boolean): string {
+  const ox = (0.08 + 0.66) * size, oy = 0.53 * size
+  const rot = (deg: number) => `${deg} ${ox.toFixed(1)} ${oy.toFixed(1)}`
+  const wave = [82, -12, 18, -12, 18, -12, 18, 0, 82].map(rot).join(';')
+  const ring = cheer
+    ? `<circle cx="${size / 2}" cy="${size * 0.42}" r="${size * 0.3}" fill="none" stroke="${MINT}" stroke-width="2.5" opacity="0">
+  <animate attributeName="r" values="${size * 0.27};${size * 0.44}" dur="1.1s" begin="0.1s" repeatCount="3"/>
+  <animate attributeName="opacity" values="0.8;0" dur="1.1s" begin="0.1s" repeatCount="3"/>
+</circle>`
+    : ''
+  return `<g transform="translate(${x} ${y})">
+<g>
+  <animateTransform attributeName="transform" type="translate" values="0 0;0 -3;0 0" keyTimes="0;0.5;1" dur="3.2s" repeatCount="indefinite" calcMode="spline" keySplines="0.45 0 0.55 1;0.45 0 0.55 1"/>
+  ${ring}
+  <image href="${FOX_ARM}" x="${0.08 * size}" y="0" width="${size}" height="${size}" transform="rotate(${rot(82)})">
+    <animateTransform attributeName="transform" type="rotate" values="${wave}" keyTimes="0;0.15;0.27;0.42;0.54;0.66;0.78;0.88;1" dur="3.5s" begin="0.35s" fill="freeze"/>
+  </image>
+  <image href="${FOX_BODY}" x="0" y="0" width="${size}" height="${size}"/>
+</g>
+</g>`
+}
+
+function heroSvg(route: Route, p: Progress, cheer = false): string {
+  const W = 360, H = 190
   const total = route.steps.length
   const n = countDone(p)
   const pct = Math.round((n / total) * 100)
@@ -230,7 +255,7 @@ function heroSvg(route: Route, p: Progress): string {
   const mono = 'font-family="ui-monospace,SFMono-Regular,Menlo,monospace"'
 
   // Una marca por parada, agrupadas por tramo con aire entre grupos.
-  const x0 = 20, y = 140, groupGap = 7
+  const x0 = 20, y = 170, groupGap = 7
   const gaps = route.legs.length - 1
   const tickW = (W - 2 * x0 - groupGap * gaps) / total
   const ticks: string[] = []
@@ -251,8 +276,8 @@ function heroSvg(route: Route, p: Progress): string {
   <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="${FOX}" stop-opacity="0.35"/><stop offset="1" stop-color="${FOX}" stop-opacity="0"/></radialGradient>
 </defs>
 <rect width="${W}" height="${H}" rx="18" fill="url(#bg)"/>
-<circle cx="${W - 62}" cy="66" r="66" fill="url(#glow)"/>
-<g transform="translate(${W - 112} 16) scale(0.098)"><path d="${FOX_PATH}" fill="${FOX}"/></g>
+<circle cx="${W - 82}" cy="78" r="78" fill="url(#glow)"/>
+${foxSvg(W - 168, 4, 156, cheer)}
 <text x="20" y="34" ${mono} font-size="10" letter-spacing="1.6" fill="${MINT}">${esc(route.name.toUpperCase())}</text>
 <text x="20" y="70" ${sans} font-size="26" font-weight="700" fill="#ffffff">${esc(headline)}</text>
 <text x="20" y="94" ${sans} font-size="13" fill="rgba(255,255,255,0.72)">${n} de ${total} hechas · ${pct}%</text>
@@ -379,7 +404,7 @@ export const register: Register = on => {
             <Text color="subtle">{'▮'.repeat(n)}{'▯'.repeat(total - n)} {n}/{total}</Text>
           </Box>
         ) : (
-          <Svg source={heroSvg(route, { ...p, cur })} alt={`${route.name}: parada ${cur + 1}, ${n} de ${total} hechas`} />
+          <Svg source={heroSvg(route, { ...p, cur }, picked === right)} alt={`${route.name}: parada ${cur + 1}, ${n} de ${total} hechas`} />
         )}
 
         <Box flexDirection="column" gap={1}>
