@@ -229,8 +229,22 @@ const answer = ($: EngineInterface, i: number) =>
     p.ans[p.cur] != null ? p : { ...p, ans: { ...p.ans, [p.cur]: i }, done: { ...p.done, [p.cur]: true }, at: Date.now() },
   )
 
-const next = ($: EngineInterface) =>
-  changeActive($, (p, r) => ({ ...p, done: { ...p.done, [p.cur]: true }, cur: Math.min(r.steps.length - 1, p.cur + 1), at: Date.now() }))
+// Avanza a la siguiente parada. En la última, si quedan pendientes lleva a la primera que falta.
+async function next($: EngineInterface) {
+  let pending = 0
+  let finished = false
+  await changeActive($, (p, r) => {
+    const done: Record<string, boolean> = { ...p.done, [p.cur]: true }
+    const last = r.steps.length - 1
+    if (p.cur < last) return { ...p, done, cur: p.cur + 1, at: Date.now() }
+    const missing = r.steps.map((_, i) => i).filter(i => !done[i])
+    pending = missing.length
+    finished = pending === 0
+    return { ...p, done, cur: pending ? missing[0]! : p.cur, at: Date.now() }
+  })
+  if (pending) $.ui.toast(pending === 1 ? 'Te queda 1 parada: te llevo a ella.' : `Te quedan ${pending} paradas: te llevo a la primera.`)
+  else if (finished) $.ui.toast('¡Ruta terminada! El zorrito está feliz.')
+}
 
 async function random($: EngineInterface) {
   const route = routeById((await read($, settings)).active)
