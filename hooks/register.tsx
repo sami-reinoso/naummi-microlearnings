@@ -289,7 +289,29 @@ async function next($: EngineInterface) {
     return { ...p, done, cur: pending ? missing[0]! : p.cur, at: Date.now() }
   })
   if (pending) $.ui.toast(pending === 1 ? 'Te queda 1 parada: te llevo a ella.' : `Te quedan ${pending} paradas: te llevo a la primera.`)
-  else if (finished) $.ui.toast(cheer.finished())
+  else if (finished) await afterFinish($)
+}
+
+// Ruta terminada: el aviso solo no se nota, así que lleva a lo que sigue.
+// Primero el examen si falta; si seguís un camino, su próxima ruta; si no, Explorar.
+async function afterFinish($: EngineInterface) {
+  const s = await read($, settings)
+  const route = routeById(s.active)
+  const passes = s.passes ?? {}
+  if (route.exam && !passes[route.id]) {
+    $.ui.toast(`${cheer.finished()} Ahora, el examen del nivel.`)
+    await startExam($, route.id)
+    return
+  }
+  const cam = caminoById(s.path)
+  const nextInCamino = cam ? caminoProgress(cam, await read($, byRoute), passes).next : undefined
+  if (nextInCamino && nextInCamino.id !== route.id) {
+    $.ui.toast(`${cheer.finished()} Sigue ${nextInCamino.name}.`)
+    await openRoute($, nextInCamino.id)
+    return
+  }
+  $.ui.toast(cheer.finished())
+  await update($, view, () => (cam ? 'caminos' : 'rutas') as View)
 }
 
 async function random($: EngineInterface) {
