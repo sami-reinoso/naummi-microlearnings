@@ -59,8 +59,8 @@ const DEFS: Def[] = [
     blurb: 'APIs y servicios con C# y .NET, con bases de datos SQL.',
     levels: [
       ['Sintaxis de C#, consultas SQL básicas y control de versiones.', [['csharp', 1], ['sql', 1], ['git', 1], ['ia', 1]]],
-      ['C# intermedio, joins y agregaciones, ramas y PRs, e inglés técnico.', [['csharp', 2], ['sql', 2], ['git', 2], ['ingles', 1], 'escribir', ['ia', 2]]],
-      ['C# avanzado, SQL de alto nivel, Git avanzado y liderar conversaciones técnicas.', [['csharp', 3], ['sql', 3], ['git', 3], ['ingles', 2], ['oratoria', 1], 'escribir', ['ia', 3]]],
+      ['C# intermedio, joins y agregaciones, ramas y PRs, e inglés técnico.', [['csharp', 2], ['sql', 2], ['git', 2], ['ingles', 1], 'escribir', ['terraform', 1], ['ia', 2]]],
+      ['C# avanzado, SQL de alto nivel, Git avanzado y liderar conversaciones técnicas.', [['csharp', 3], ['sql', 3], ['git', 3], ['ingles', 2], ['oratoria', 1], 'escribir', ['terraform', 2], ['ia', 3]]],
     ],
   },
   {
@@ -96,8 +96,8 @@ const DEFS: Def[] = [
     blurb: 'Mover, limpiar y modelar datos con SQL, Python y Git.',
     levels: [
       ['Las bases: SQL, Python y versionar el código.', [['sql', 1], ['python', 1], ['git', 1], ['ia', 1]]],
-      ['Modelado y transformaciones; scripts mantenibles.', [['sql', 2], ['python', 2], ['git', 2], ['ingles', 1], ['ia', 2]]],
-      ['Rendimiento, consultas complejas y documentar pipelines.', [['sql', 3], ['python', 3], ['git', 3], ['ingles', 2], 'escribir', ['ia', 3]]],
+      ['Modelado y transformaciones; scripts mantenibles.', [['sql', 2], ['python', 2], ['git', 2], ['ingles', 1], ['terraform', 1], ['ia', 2]]],
+      ['Rendimiento, consultas complejas y documentar pipelines.', [['sql', 3], ['python', 3], ['git', 3], ['ingles', 2], 'escribir', ['terraform', 2], ['ia', 3]]],
     ],
   },
   // --- Producto y diseño

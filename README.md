@@ -52,6 +52,8 @@ Un camino es un conjunto de rutas ya armado para un rol y un nivel de experienci
 
 Todos los caminos, salvo Trabajar para el exterior y Comunicar mejor, incluyen la ruta Uso de IA en el nivel que corresponde.
 
+Backend con C# y .NET e Ingeniería de datos suman Terraform desde Ssr (Fundamentos) y en Sr (Intermedio).
+
 Cada nivel incluye los anteriores, ordenados para avanzar parejo: primero todos los niveles 1, después los 2 y los 3. Al elegir un camino se abre la primera ruta que te falta. Una franja arriba del paso muestra el avance y, al terminar una ruta, te ofrece seguir con la próxima. Una ruta cuenta como hecha cuando aprobás su examen o, si no tiene, cuando hiciste todas las paradas. El avance es el de cada ruta, así que sirve para todos los caminos que la incluyen, y dejar un camino no borra nada.
 
 Los caminos se declaran en `hooks/caminos.ts`.
