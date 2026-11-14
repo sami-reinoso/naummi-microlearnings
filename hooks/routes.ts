@@ -11,6 +11,8 @@ import { SQL } from './content/sql'
 import { INGLES } from './content/ingles'
 import { FINANZAS } from './content/finanzas'
 import { DISENO } from './content/diseno'
+import { IA } from './content/ia'
+import { TERRAFORM } from './content/terraform'
 
 // Pregunta de examen: [pregunta, opciones, índice correcto]. Nunca se repite en las paradas.
 export type ExamQ = [string, string[], number]
@@ -36,9 +38,9 @@ export type Route = {
 export const LEVEL_NAMES = ['', 'Fundamentos', 'Intermedio', 'Avanzado']
 
 // Orden en que se muestran los temas en la sección Rutas.
-export const TOPICS = ['Mis rutas', 'Tecnología', 'Datos', 'Idiomas', 'Comunicación', 'Producto y diseño', 'Finanzas personales', 'Cultura general', 'Astrología']
+export const TOPICS = ['Mis rutas', 'Tecnología', 'Inteligencia artificial', 'Datos', 'Idiomas', 'Comunicación', 'Producto y diseño', 'Finanzas personales', 'Cultura general', 'Astrología']
 
-export const TRACK_NAMES: Record<string, string> = { vue: 'Vue 3', csharp: 'C# y .NET', ts: 'TypeScript', git: 'Git', oratoria: 'Oratoria', python: 'Python', sql: 'SQL', ingles: 'Inglés para el trabajo', finanzas: 'Finanzas personales', diseno: 'Diseño de interfaces' }
+export const TRACK_NAMES: Record<string, string> = { vue: 'Vue 3', csharp: 'C# y .NET', ts: 'TypeScript', git: 'Git', oratoria: 'Oratoria', python: 'Python', sql: 'SQL', ingles: 'Inglés para el trabajo', finanzas: 'Finanzas personales', diseno: 'Diseño de interfaces', ia: 'Uso de IA', terraform: 'Terraform' }
 
 // La primera ruta es la que se muestra por defecto.
 export const ROUTES: Route[] = [
@@ -53,6 +55,8 @@ export const ROUTES: Route[] = [
   ...INGLES,
   ...FINANZAS,
   ...DISENO,
+  ...IA,
+  ...TERRAFORM,
   { id: 'producto', name: 'Producto', topic: 'Producto y diseño', keywords: ['producto', 'ux', 'mvp', 'retención', 'métricas', 'priorizar', 'jobs to be done'], blurb: 'Entender un problema, validar barato y construir algo que la gente siga usando.', pace: '8 paradas · 3 min', legs: PRODUCTO_LEGS, steps: PRODUCTO },
   { id: 'escribir', name: 'Escribir claro', topic: 'Comunicación', keywords: ['escritura', 'redacción', 'mails', 'documentos', 'claridad', 'comunicación'], blurb: 'Hábitos simples para que mails, documentos y mensajes se entiendan a la primera.', pace: '8 paradas · 3 min', legs: ESCRIBIR_LEGS, steps: ESCRIBIR },
   { id: 'astro', name: 'Astrología: el mapa', topic: 'Astrología', keywords: ['astrología', 'zodíaco', 'signos', 'casas', 'aspectos', 'elementos', 'historia'], blurb: 'De dónde viene, cómo se arma el zodíaco, elementos, casas, aspectos y qué dice la ciencia.', pace: '8 paradas · 3 min', legs: ASTRO_LEGS, steps: ASTRO },

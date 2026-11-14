@@ -1,3 +1,36 @@
+Microdosis tiene dos licencias: una para el código y otra para el contenido.
+
+1. CONTENIDO: todos los derechos reservados
+
+Copyright (c) 2026 Samanta Reinoso. Todos los derechos reservados.
+
+El contenido de Microdosis es todo lo que se aprende y se rinde en el mod:
+las paradas, sus textos, los "para llevarte", las preguntas y sus opciones,
+los exámenes, las rutas y los caminos. Está en estos archivos:
+
+  - hooks/steps.ts
+  - hooks/rutas-largas.ts
+  - hooks/caminos.ts
+  - hooks/content/
+
+y en los textos de las rutas declarados en hooks/routes.ts.
+
+Las ilustraciones del zorrito y la plantita (hooks/fox-art.ts) y el ícono
+(.claude-plugin/icon.png) fueron generadas con inteligencia artificial para
+Naummi. No se incluyen en la licencia MIT de este repositorio y no se otorga
+ninguna licencia para usarlas fuera del mod.
+
+Se permite instalar y usar el mod para aprender con ese contenido. No se
+permite copiar, reproducir, modificar, traducir, distribuir, publicar,
+vender ni usar el contenido para crear otros cursos, materiales o productos,
+ni para entrenar modelos de inteligencia artificial, sin autorización previa
+y por escrito de la autora.
+
+2. CÓDIGO: licencia MIT
+
+Todo lo demás del repositorio (el código del mod, sus tipos y su
+configuración) está bajo la licencia MIT:
+
 MIT License
 
 Copyright (c) 2026 Samanta Reinoso
@@ -19,3 +52,8 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+3. TERCEROS
+
+La tipografía Inter (hooks/inter-font.ts), de Rasmus Andersson, sigue con su
+propia licencia, la SIL Open Font License 1.1.

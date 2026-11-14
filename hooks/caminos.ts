@@ -40,45 +40,45 @@ const DEFS: Def[] = [
     id: 'frontend-vue', name: 'Frontend con Vue', area: 'Desarrollo',
     blurb: 'Interfaces web con Vue 3 y TypeScript, trabajando en equipo con Git.',
     levels: [
-      ['Lo básico para entrar a un equipo: componentes, reactividad, tipos y commits prolijos.', [['vue', 1], ['ts', 1], ['git', 1], 'escribir']],
-      ['Componentes que se comunican, tipos más finos, ramas y PRs, y criterio de diseño.', [['vue', 2], ['ts', 2], ['git', 2], ['diseno', 1], ['ingles', 1], 'escribir']],
-      ['Arquitectura, rendimiento y tipos avanzados; explicar decisiones y pensar en producto.', [['vue', 3], ['ts', 3], ['git', 3], ['diseno', 2], ['ingles', 2], ['oratoria', 1], 'escribir', 'producto']],
+      ['Lo básico para entrar a un equipo: componentes, reactividad, tipos y commits prolijos.', [['vue', 1], ['ts', 1], ['git', 1], 'escribir', ['ia', 1]]],
+      ['Componentes que se comunican, tipos más finos, ramas y PRs, y criterio de diseño.', [['vue', 2], ['ts', 2], ['git', 2], ['diseno', 1], ['ingles', 1], 'escribir', ['ia', 2]]],
+      ['Arquitectura, rendimiento y tipos avanzados; explicar decisiones y pensar en producto.', [['vue', 3], ['ts', 3], ['git', 3], ['diseno', 2], ['ingles', 2], ['oratoria', 1], 'escribir', 'producto', ['ia', 3]]],
     ],
   },
   {
     id: 'web-ts', name: 'Desarrollo web con TypeScript', area: 'Desarrollo',
     blurb: 'TypeScript a fondo, sin atarse a un framework, con Git y buenas prácticas.',
     levels: [
-      ['Tipos básicos, funciones tipadas y el flujo diario con Git.', [['ts', 1], ['git', 1]]],
-      ['Genéricos, uniones y narrowing; ramas, rebase y revisiones de código.', [['ts', 2], ['git', 2], ['vue', 1], ['ingles', 1], 'escribir']],
-      ['Tipos avanzados, historia limpia del repo y comunicación técnica.', [['ts', 3], ['git', 3], ['vue', 2], ['ingles', 2], 'escribir']],
+      ['Tipos básicos, funciones tipadas y el flujo diario con Git.', [['ts', 1], ['git', 1], ['ia', 1]]],
+      ['Genéricos, uniones y narrowing; ramas, rebase y revisiones de código.', [['ts', 2], ['git', 2], ['vue', 1], ['ingles', 1], 'escribir', ['ia', 2]]],
+      ['Tipos avanzados, historia limpia del repo y comunicación técnica.', [['ts', 3], ['git', 3], ['vue', 2], ['ingles', 2], 'escribir', ['ia', 3]]],
     ],
   },
   {
     id: 'backend-net', name: 'Backend con C# y .NET', area: 'Desarrollo',
     blurb: 'APIs y servicios con C# y .NET, con bases de datos SQL.',
     levels: [
-      ['Sintaxis de C#, consultas SQL básicas y control de versiones.', [['csharp', 1], ['sql', 1], ['git', 1]]],
-      ['C# intermedio, joins y agregaciones, ramas y PRs, e inglés técnico.', [['csharp', 2], ['sql', 2], ['git', 2], ['ingles', 1], 'escribir']],
-      ['C# avanzado, SQL de alto nivel, Git avanzado y liderar conversaciones técnicas.', [['csharp', 3], ['sql', 3], ['git', 3], ['ingles', 2], ['oratoria', 1], 'escribir']],
+      ['Sintaxis de C#, consultas SQL básicas y control de versiones.', [['csharp', 1], ['sql', 1], ['git', 1], ['ia', 1]]],
+      ['C# intermedio, joins y agregaciones, ramas y PRs, e inglés técnico.', [['csharp', 2], ['sql', 2], ['git', 2], ['ingles', 1], 'escribir', ['ia', 2]]],
+      ['C# avanzado, SQL de alto nivel, Git avanzado y liderar conversaciones técnicas.', [['csharp', 3], ['sql', 3], ['git', 3], ['ingles', 2], ['oratoria', 1], 'escribir', ['ia', 3]]],
     ],
   },
   {
     id: 'fullstack', name: 'Full stack: Vue + .NET', area: 'Desarrollo',
     blurb: 'Las dos puntas: frontend con Vue y TypeScript, backend con C# y SQL.',
     levels: [
-      ['Lo esencial de cada capa para poder tocar las dos.', [['vue', 1], ['ts', 1], ['csharp', 1], ['sql', 1], ['git', 1]]],
-      ['Integrar frontend y backend con confianza en cada lado.', [['vue', 2], ['ts', 2], ['csharp', 2], ['sql', 2], ['git', 2], ['ingles', 1], 'escribir']],
-      ['Diseñar el sistema completo y explicar sus decisiones.', [['vue', 3], ['ts', 3], ['csharp', 3], ['sql', 3], ['git', 3], ['ingles', 2], ['oratoria', 1], 'producto']],
+      ['Lo esencial de cada capa para poder tocar las dos.', [['vue', 1], ['ts', 1], ['csharp', 1], ['sql', 1], ['git', 1], ['ia', 1]]],
+      ['Integrar frontend y backend con confianza en cada lado.', [['vue', 2], ['ts', 2], ['csharp', 2], ['sql', 2], ['git', 2], ['ingles', 1], 'escribir', ['ia', 2]]],
+      ['Diseñar el sistema completo y explicar sus decisiones.', [['vue', 3], ['ts', 3], ['csharp', 3], ['sql', 3], ['git', 3], ['ingles', 2], ['oratoria', 1], 'producto', ['ia', 3]]],
     ],
   },
   {
     id: 'python-dev', name: 'Desarrollo con Python', area: 'Desarrollo',
     blurb: 'Scripts, automatizaciones y servicios con Python, con datos en SQL.',
     levels: [
-      ['Python desde cero y el día a día con Git.', [['python', 1], ['git', 1]]],
-      ['Python intermedio, consultas SQL y trabajo en equipo.', [['python', 2], ['sql', 1], ['git', 2], ['ingles', 1], 'escribir']],
-      ['Python avanzado, SQL sólido y comunicar el trabajo técnico.', [['python', 3], ['sql', 2], ['git', 3], ['ingles', 2], ['oratoria', 1]]],
+      ['Python desde cero y el día a día con Git.', [['python', 1], ['git', 1], ['ia', 1]]],
+      ['Python intermedio, consultas SQL y trabajo en equipo.', [['python', 2], ['sql', 1], ['git', 2], ['ingles', 1], 'escribir', ['ia', 2]]],
+      ['Python avanzado, SQL sólido y comunicar el trabajo técnico.', [['python', 3], ['sql', 2], ['git', 3], ['ingles', 2], ['oratoria', 1], ['ia', 3]]],
     ],
   },
   // --- Datos
@@ -86,18 +86,18 @@ const DEFS: Def[] = [
     id: 'analista-datos', name: 'Análisis de datos', area: 'Datos',
     blurb: 'Sacar respuestas de los datos con SQL y Python, y contarlas bien.',
     levels: [
-      ['Consultas SQL y Python para explorar datos.', [['sql', 1], ['python', 1], 'escribir']],
-      ['Agregaciones, joins y análisis con Python; presentar hallazgos.', [['sql', 2], ['python', 2], ['oratoria', 1], 'escribir', 'producto']],
-      ['SQL avanzado, Python fluido y llevar los datos a decisiones de producto.', [['sql', 3], ['python', 3], ['oratoria', 2], ['ingles', 1], 'escribir', 'producto']],
+      ['Consultas SQL y Python para explorar datos.', [['sql', 1], ['python', 1], 'escribir', ['ia', 1]]],
+      ['Agregaciones, joins y análisis con Python; presentar hallazgos.', [['sql', 2], ['python', 2], ['oratoria', 1], 'escribir', 'producto', ['ia', 2]]],
+      ['SQL avanzado, Python fluido y llevar los datos a decisiones de producto.', [['sql', 3], ['python', 3], ['oratoria', 2], ['ingles', 1], 'escribir', 'producto', ['ia', 3]]],
     ],
   },
   {
     id: 'ingenieria-datos', name: 'Ingeniería de datos', area: 'Datos',
     blurb: 'Mover, limpiar y modelar datos con SQL, Python y Git.',
     levels: [
-      ['Las bases: SQL, Python y versionar el código.', [['sql', 1], ['python', 1], ['git', 1]]],
-      ['Modelado y transformaciones; scripts mantenibles.', [['sql', 2], ['python', 2], ['git', 2], ['ingles', 1]]],
-      ['Rendimiento, consultas complejas y documentar pipelines.', [['sql', 3], ['python', 3], ['git', 3], ['ingles', 2], 'escribir']],
+      ['Las bases: SQL, Python y versionar el código.', [['sql', 1], ['python', 1], ['git', 1], ['ia', 1]]],
+      ['Modelado y transformaciones; scripts mantenibles.', [['sql', 2], ['python', 2], ['git', 2], ['ingles', 1], ['ia', 2]]],
+      ['Rendimiento, consultas complejas y documentar pipelines.', [['sql', 3], ['python', 3], ['git', 3], ['ingles', 2], 'escribir', ['ia', 3]]],
     ],
   },
   // --- Producto y diseño
@@ -105,18 +105,18 @@ const DEFS: Def[] = [
     id: 'ux-ui', name: 'Diseño UX/UI', area: 'Producto y diseño',
     blurb: 'Diseñar interfaces claras, entender el producto y defender tus decisiones.',
     levels: [
-      ['Principios de diseño de interfaces y textos que se entienden.', [['diseno', 1], 'escribir', 'producto']],
-      ['Sistemas de diseño, presentar propuestas y un poco de código.', [['diseno', 2], ['oratoria', 1], ['vue', 1], ['ingles', 1], 'escribir', 'producto']],
-      ['Diseño avanzado, liderar críticas y hablar el idioma de desarrollo.', [['diseno', 3], ['oratoria', 2], ['vue', 1], ['ts', 1], ['ingles', 2], 'producto']],
+      ['Principios de diseño de interfaces y textos que se entienden.', [['diseno', 1], 'escribir', 'producto', ['ia', 1]]],
+      ['Sistemas de diseño, presentar propuestas y un poco de código.', [['diseno', 2], ['oratoria', 1], ['vue', 1], ['ingles', 1], 'escribir', 'producto', ['ia', 2]]],
+      ['Diseño avanzado, liderar críticas y hablar el idioma de desarrollo.', [['diseno', 3], ['oratoria', 2], ['vue', 1], ['ts', 1], ['ingles', 2], 'producto', ['ia', 2]]],
     ],
   },
   {
     id: 'product-manager', name: 'Product Manager', area: 'Producto y diseño',
     blurb: 'Decidir qué construir, con datos, diseño y buena comunicación.',
     levels: [
-      ['Producto, escritura clara y las primeras consultas a los datos.', ['producto', 'escribir', ['sql', 1], ['diseno', 1]]],
-      ['Priorizar con datos, presentar al equipo y trabajar con diseño.', ['producto', 'escribir', ['sql', 2], ['diseno', 2], ['oratoria', 1], ['ingles', 1]]],
-      ['Liderar la visión: presentar a dirección, datos finos y equipos en inglés.', ['producto', 'escribir', ['sql', 2], ['diseno', 2], ['oratoria', 3], ['ingles', 3], ['git', 1]]],
+      ['Producto, escritura clara y las primeras consultas a los datos.', ['producto', 'escribir', ['sql', 1], ['diseno', 1], ['ia', 1]]],
+      ['Priorizar con datos, presentar al equipo y trabajar con diseño.', ['producto', 'escribir', ['sql', 2], ['diseno', 2], ['oratoria', 1], ['ingles', 1], ['ia', 2]]],
+      ['Liderar la visión: presentar a dirección, datos finos y equipos en inglés.', ['producto', 'escribir', ['sql', 2], ['diseno', 2], ['oratoria', 3], ['ingles', 3], ['git', 1], ['ia', 3]]],
     ],
   },
   // --- Carrera y habilidades
@@ -125,9 +125,9 @@ const DEFS: Def[] = [
     labels: ['Referente', 'Tech Lead', 'Staff'],
     blurb: 'Pasar de resolver tareas a guiar al equipo: comunicar, documentar y decidir.',
     levels: [
-      ['Ser la persona a la que el equipo consulta: Git sólido y explicaciones claras.', [['git', 2], ['oratoria', 1], ['ingles', 1], 'escribir']],
-      ['Liderar un equipo: presentar, revisar, priorizar y escribir decisiones.', [['git', 3], ['oratoria', 2], ['ingles', 2], 'escribir', 'producto']],
-      ['Influir más allá del equipo: hablar en público y trabajar en inglés.', [['git', 3], ['oratoria', 3], ['ingles', 3], 'escribir', 'producto', ['diseno', 1]]],
+      ['Ser la persona a la que el equipo consulta: Git sólido y explicaciones claras.', [['git', 2], ['oratoria', 1], ['ingles', 1], 'escribir', ['ia', 2]]],
+      ['Liderar un equipo: presentar, revisar, priorizar y escribir decisiones.', [['git', 3], ['oratoria', 2], ['ingles', 2], 'escribir', 'producto', ['ia', 3]]],
+      ['Influir más allá del equipo: hablar en público y trabajar en inglés.', [['git', 3], ['oratoria', 3], ['ingles', 3], 'escribir', 'producto', ['diseno', 1], ['ia', 3]]],
     ],
   },
   {
@@ -145,9 +145,9 @@ const DEFS: Def[] = [
     labels: ['Arrancando', 'Con clientes', 'Consolidado'],
     blurb: 'Venderte, entender al cliente y que tus números cierren.',
     levels: [
-      ['Finanzas básicas, propuestas escritas y entender qué necesita el cliente.', [['finanzas', 1], 'escribir', 'producto']],
-      ['Presentar propuestas, clientes del exterior y ahorrar para los meses flojos.', [['finanzas', 2], ['oratoria', 1], ['ingles', 1], 'escribir', 'producto']],
-      ['Negociar con confianza, clientes en inglés e inversión de largo plazo.', [['finanzas', 3], ['oratoria', 2], ['ingles', 2], 'escribir', 'producto']],
+      ['Finanzas básicas, propuestas escritas y entender qué necesita el cliente.', [['finanzas', 1], 'escribir', 'producto', ['ia', 1]]],
+      ['Presentar propuestas, clientes del exterior y ahorrar para los meses flojos.', [['finanzas', 2], ['oratoria', 1], ['ingles', 1], 'escribir', 'producto', ['ia', 2]]],
+      ['Negociar con confianza, clientes en inglés e inversión de largo plazo.', [['finanzas', 3], ['oratoria', 2], ['ingles', 2], 'escribir', 'producto', ['ia', 3]]],
     ],
   },
   {

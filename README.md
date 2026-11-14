@@ -24,7 +24,8 @@ Tocá **Rutas** en el panel para buscar y elegir qué microlearnings ver. El bus
 
 | Tema | Ruta | Niveles |
 | --- | --- | --- |
-| Tecnología | Vue 3 · C# y .NET · TypeScript · Git · Python | Fundamentos · Intermedio · Avanzado |
+| Tecnología | Vue 3 · C# y .NET · TypeScript · Git · Python · Terraform | Fundamentos · Intermedio · Avanzado |
+| Inteligencia artificial | Uso de IA | Fundamentos · Intermedio · Avanzado |
 | Datos | SQL | Fundamentos · Intermedio · Avanzado |
 | Idiomas | Inglés para el trabajo | Fundamentos · Intermedio · Avanzado |
 | Comunicación | Oratoria | Fundamentos · Intermedio · Avanzado |
@@ -48,6 +49,8 @@ Un camino es un conjunto de rutas ya armado para un rol y un nivel de experienci
 | Carrera y habilidades | Trabajar para el exterior | Primeros pasos · En camino · Listo |
 | Carrera y habilidades | Freelance | Arrancando · Con clientes · Consolidado |
 | Carrera y habilidades | Comunicar mejor | Básico · Intermedio · Avanzado |
+
+Todos los caminos, salvo Trabajar para el exterior y Comunicar mejor, incluyen la ruta Uso de IA en el nivel que corresponde.
 
 Cada nivel incluye los anteriores, ordenados para avanzar parejo: primero todos los niveles 1, después los 2 y los 3. Al elegir un camino se abre la primera ruta que te falta. Una franja arriba del paso muestra el avance y, al terminar una ruta, te ofrece seguir con la próxima. Una ruta cuenta como hecha cuando aprobás su examen o, si no tiene, cuando hiciste todas las paradas. El avance es el de cada ruta, así que sirve para todos los caminos que la incluyen, y dejar un camino no borra nada.
 
@@ -165,5 +168,14 @@ Las rutas se declaran en `hooks/routes.ts`. Los pasos de Variado están en `hook
 
 ## Créditos
 
-- Zorrito con su libro y su plantita: ilustración de Naummi.
+- Zorrito con su libro y su plantita: ilustración generada con IA para Naummi.
 - Tipografía de la cabecera: [Inter](https://rsms.me/inter/) de Rasmus Andersson, con licencia SIL Open Font License 1.1, incrustada y reducida a los caracteres que usa la cabecera.
+
+## Licencia
+
+- **Contenido:** todos los derechos reservados. Las paradas, los exámenes, las rutas y los caminos (`hooks/steps.ts`, `hooks/rutas-largas.ts`, `hooks/caminos.ts`, `hooks/content/` y los textos de `hooks/routes.ts`) se pueden usar dentro del mod para aprender, pero no copiar, adaptar, publicar ni vender sin autorización.
+- **Ilustraciones:** el zorrito, la plantita y el ícono fueron generados con IA para Naummi. No están bajo la licencia MIT ni se licencian para usar fuera del mod.
+- **Código:** licencia MIT.
+- **Tipografía Inter:** SIL Open Font License 1.1.
+
+El detalle está en [LICENSE](LICENSE).
